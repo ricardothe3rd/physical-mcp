@@ -26,32 +26,38 @@ PhysicalMCP enforces a safety layer **before** any command reaches your robot:
 ## Architecture
 
 ```
-┌─────────────┐     stdio      ┌──────────────────────────────────────┐
-│   AI Agent   │◄──────────────►│          MCP Server (TypeScript)     │
-│  (Claude,    │    MCP         │                                      │
-│   GPT, etc.) │   protocol     │  ┌────────────────────────────────┐  │
-└─────────────┘                │  │        Safety Layer             │  │
-                               │  │  ┌─────────┐ ┌──────────────┐  │  │
-                               │  │  │Velocity │ │  Geofence    │  │  │
-                               │  │  │ Limits  │ │  Boundaries  │  │  │
-                               │  │  └─────────┘ └──────────────┘  │  │
-                               │  │  ┌─────────┐ ┌──────────────┐  │  │
-                               │  │  │  Rate   │ │  E-Stop +    │  │  │
-                               │  │  │ Limiter │ │  Audit Log   │  │  │
-                               │  │  └─────────┘ └──────────────┘  │  │
-                               │  └────────────────────────────────┘  │
-                               └──────────────┬───────────────────────┘
-                                              │ WebSocket (port 9090)
-                               ┌──────────────▼───────────────────────┐
-                               │       ROS2 Bridge (Python)           │
-                               │  rclpy + websockets                  │
-                               │  Secondary e-stop as fail-safe       │
-                               └──────────────┬───────────────────────┘
-                                              │ ROS2 DDS
-                               ┌──────────────▼───────────────────────┐
-                               │         ROS2 Robot                   │
-                               │  Topics, Services, Actions           │
-                               └──────────────────────────────────────┘
+┌──────────────┐              ┌────────────────────────────────────────┐
+│   AI Agent   │◄────────────►│       MCP Server (TypeScript)          │
+│  (Claude,    │  MCP         │                                        │
+│  GPT, etc.)  │  protocol    │  ┌──────────────────────────────────┐  │
+└──────────────┘              │  │           Safety Layer           │  │
+                              │  │                                  │  │
+                              │  │   ┌──────────┐  ┌────────────┐   │  │
+                              │  │   │ Velocity │  │  Geofence  │   │  │
+                              │  │   │  Limits  │  │ Boundaries │   │  │
+                              │  │   └──────────┘  └────────────┘   │  │
+                              │  │   ┌──────────┐  ┌────────────┐   │  │
+                              │  │   │   Rate   │  │  E-Stop +  │   │  │
+                              │  │   │  Limiter │  │ Audit Log  │   │  │
+                              │  │   └──────────┘  └────────────┘   │  │
+                              │  │                                  │  │
+                              │  └──────────────────────────────────┘  │
+                              └───────────────────┬────────────────────┘
+                                                  │
+                                         WebSocket (port 9090)
+                                                  │
+                              ┌───────────────────▼────────────────────┐
+                              │        ROS2 Bridge (Python)            │
+                              │  rclpy + websockets                    │
+                              │  Secondary e-stop as fail-safe         │
+                              └───────────────────┬────────────────────┘
+                                                  │
+                                             ROS2 DDS
+                                                  │
+                              ┌───────────────────▼────────────────────┐
+                              │           ROS2 Robot                   │
+                              │  Topics, Services, Actions             │
+                              └────────────────────────────────────────┘
 ```
 
 The safety layer sits in the TypeScript MCP server and evaluates **every** publish, service call, and action goal before it reaches the bridge. The Python bridge has a secondary emergency stop as an additional fail-safe.
