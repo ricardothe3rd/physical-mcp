@@ -18,7 +18,7 @@
 ## Files Created (38 total)
 
 ### TypeScript MCP Server (packages/mcp-server/)
-- `package.json` - npm package config (@chinchillaenterprises/physical-mcp)
+- `package.json` - npm package config (@ricardothe3rd/physical-mcp)
 - `tsconfig.json` - TypeScript config (ES2022, strict)
 - `src/index.ts` - Main MCP server entry with 21 tool registrations
 - `src/bridge/protocol.ts` - WebSocket protocol types + zod schemas
@@ -119,9 +119,9 @@ Tests that run WITHOUT ROS2 (on macOS):
 - [ ] Architecture diagram (ASCII or mermaid)
   - Show: Claude -> MCP Server -> Safety Layer -> WebSocket -> Bridge -> ROS2
 - [ ] Quick start guide:
-  1. `npm install -g @chinchillaenterprises/physical-mcp`
+  1. `npm install -g @ricardothe3rd/physical-mcp`
   2. `docker compose up` (sim + bridge)
-  3. `claude mcp add physical-mcp npx @chinchillaenterprises/physical-mcp`
+  3. `claude mcp add physical-mcp npx @ricardothe3rd/physical-mcp`
   4. Ask Claude to list topics
 - [ ] Tool reference table (21 tools with descriptions)
 - [ ] Safety features section (THE differentiator):
@@ -160,9 +160,9 @@ File: `demo/safety-demo.md`
 **Priority:** P2 - Makes it installable
 
 - [ ] Verify `npm run build` produces clean output
-- [ ] Test `npx @chinchillaenterprises/physical-mcp` works
+- [ ] Test `npx @ricardothe3rd/physical-mcp` works
 - [ ] `npm publish --access public`
-- [ ] Verify install: `claude mcp add physical-mcp npx @chinchillaenterprises/physical-mcp`
+- [ ] Verify install: `claude mcp add physical-mcp npx @ricardothe3rd/physical-mcp`
 
 ### 6. Initial Git Commit + Push
 **Priority:** P1 - Get code on GitHub

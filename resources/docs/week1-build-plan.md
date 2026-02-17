@@ -188,7 +188,7 @@ Safety is enforced in the TypeScript server BEFORE commands reach the Python bri
 ### Day 7: README + Publish
 - [ ] Write comprehensive README (architecture diagram, quickstart, tool reference)
 - [ ] Comparison table vs competitors (safety column highlighted)
-- [ ] `npm publish` as @chinchillaenterprises/physical-mcp
+- [ ] `npm publish` as @ricardothe3rd/physical-mcp
 - [ ] Push Docker images
 - [ ] Post to: Reddit r/ROS, ROS Discourse, Twitter/X, Hacker News
 
@@ -229,7 +229,7 @@ The safety layer IS the moat. Once companies embed PhysicalMCP safety policies i
 
 After Week 1, success looks like:
 
-1. **`npx @chinchillaenterprises/physical-mcp`** starts the MCP server
+1. **`npx @ricardothe3rd/physical-mcp`** starts the MCP server
 2. **`docker compose up`** starts Gazebo TurtleBot3 + Python bridge
 3. **Claude can**: list topics, subscribe to /odom, publish to /cmd_vel, call services, send action goals
 4. **Claude CANNOT**: exceed velocity limits, publish to blocked topics, bypass e-stop, exceed rate limits

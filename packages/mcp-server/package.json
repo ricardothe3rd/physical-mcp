@@ -1,5 +1,5 @@
 {
-  "name": "@chinchillaenterprises/physical-mcp",
+  "name": "@ricardothe3rd/physical-mcp",
   "version": "0.1.0",
   "description": "Safety-first MCP server for ROS2 robots - bridge AI agents to physical systems",
   "main": "dist/index.js",
@@ -28,7 +28,7 @@
     "geofence",
     "emergency-stop"
   ],
-  "author": "Chinchilla Enterprises",
+  "author": "ricardothe3rd",
   "license": "MIT",
   "repository": {
     "type": "git",

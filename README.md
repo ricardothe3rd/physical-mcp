@@ -3,7 +3,7 @@
 **Safety-first MCP server for ROS2 robots.** Bridge AI agents to physical systems with built-in velocity limits, geofence boundaries, emergency stop, rate limiting, and full audit logging.
 
 ```
-npm install -g @chinchillaenterprises/physical-mcp
+npm install -g @ricardothe3rd/physical-mcp
 ```
 
 ## Why PhysicalMCP?
@@ -76,7 +76,7 @@ This launches a Gazebo simulation with TurtleBot3 and the ROS2 bridge on port 90
 ### 2. Add PhysicalMCP to Claude
 
 ```bash
-claude mcp add physical-mcp -- npx @chinchillaenterprises/physical-mcp
+claude mcp add physical-mcp -- npx @ricardothe3rd/physical-mcp
 ```
 
 ### 3. Talk to your robot
@@ -269,7 +269,7 @@ Add to your Claude Desktop `claude_desktop_config.json`:
   "mcpServers": {
     "physical-mcp": {
       "command": "npx",
-      "args": ["@chinchillaenterprises/physical-mcp"],
+      "args": ["@ricardothe3rd/physical-mcp"],
       "env": {
         "PHYSICAL_MCP_BRIDGE_URL": "ws://localhost:9090",
         "PHYSICAL_MCP_POLICY": "/path/to/my-policy.yaml"

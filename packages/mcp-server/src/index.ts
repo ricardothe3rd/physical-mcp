@@ -34,7 +34,7 @@ const safety = new PolicyEngine(POLICY_PATH);
 // MCP Server
 const server = new Server(
   {
-    name: '@chinchillaenterprises/physical-mcp',
+    name: '@ricardothe3rd/physical-mcp',
     version: '0.1.0',
   },
   {
