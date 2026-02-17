@@ -10,8 +10,11 @@
 | #4 Python ROS2 bridge | DONE | bridge_node.py, discovery.py, topic/service/action handlers, telemetry |
 | #5 Safety layer | DONE | policy-engine.ts, geofence.ts, rate-limiter.ts, audit-logger.ts, policy-loader.ts, types.ts, default.yaml, turtlebot3.yaml |
 | #6 Docker setup | DONE | Dockerfile.bridge, Dockerfile.sim, docker-compose.yml |
-| #7 README + Publish | NOT STARTED | README.md, demo script, npm publish |
-| TypeScript build | BLOCKED | tsc compilation hangs/fails - needs debugging |
+| #7 README + Publish | IN PROGRESS | README.md done, demo script done, npm publish pending |
+| TypeScript build | FIXED | zodToJsonSchema type inference chain broken with toInputSchema() helper, tsconfig moduleResolution changed to node16 |
+| Unit tests | DONE | 75 tests across 6 files (policy-engine, geofence, rate-limiter, policy-loader, protocol, audit-logger) |
+| psutil bug | FIXED | Replaced psutil import with os.getpid() in telemetry.py |
+| Demo script | DONE | demo/safety-demo.md — 9-step walkthrough with expected outputs |
 
 ---
 
