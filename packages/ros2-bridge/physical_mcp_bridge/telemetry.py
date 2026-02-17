@@ -1,7 +1,7 @@
 """Periodic telemetry reporting for bridge health."""
 
+import os
 import time
-import psutil
 from typing import Any
 
 
@@ -25,5 +25,5 @@ class TelemetryReporter:
             'uptime_seconds': round(uptime, 1),
             'commands_processed': self.commands_processed,
             'errors': self.errors,
-            'pid': psutil.Process().pid if psutil else None,
+            'pid': os.getpid(),
         }
