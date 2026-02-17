@@ -1,0 +1,28 @@
+name: turtlebot3
+description: Safety policy tuned for TurtleBot3 in Gazebo simulation
+
+velocity:
+  linearMax: 0.22    # TurtleBot3 Burger max is 0.22 m/s
+  angularMax: 2.84   # TurtleBot3 Burger max is 2.84 rad/s
+
+geofence:
+  xMin: -10.0
+  xMax: 10.0
+  yMin: -10.0
+  yMax: 10.0
+  zMin: 0.0
+  zMax: 0.5
+
+rateLimits:
+  publishHz: 30
+  servicePerMinute: 120
+  actionPerMinute: 60
+
+blockedTopics:
+  - /rosout
+  - /parameter_events
+
+blockedServices:
+  - /kill
+  - /shutdown
+  - /delete_entity

@@ -1,0 +1,27 @@
+name: default
+description: Conservative default safety policy for any ROS2 robot
+
+velocity:
+  linearMax: 0.5    # m/s
+  angularMax: 1.5   # rad/s
+
+geofence:
+  xMin: -5.0
+  xMax: 5.0
+  yMin: -5.0
+  yMax: 5.0
+  zMin: 0.0
+  zMax: 2.0
+
+rateLimits:
+  publishHz: 10          # max publishes per second
+  servicePerMinute: 60   # max service calls per minute
+  actionPerMinute: 30    # max action goals per minute
+
+blockedTopics:
+  - /rosout
+  - /parameter_events
+
+blockedServices:
+  - /kill
+  - /shutdown

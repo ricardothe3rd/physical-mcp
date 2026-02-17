@@ -1,0 +1,18 @@
+FROM ros:humble
+
+# Install Gazebo and TurtleBot3
+RUN apt-get update && apt-get install -y \
+    ros-humble-gazebo-ros-pkgs \
+    ros-humble-turtlebot3-gazebo \
+    ros-humble-turtlebot3-description \
+    ros-humble-turtlebot3-navigation2 \
+    ros-humble-nav2-bringup \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV TURTLEBOT3_MODEL=burger
+
+SHELL ["/bin/bash", "-c"]
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+RUN echo "export TURTLEBOT3_MODEL=burger" >> ~/.bashrc
+
+CMD ["bash", "-c", "source /opt/ros/humble/setup.bash && export TURTLEBOT3_MODEL=burger && ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py"]

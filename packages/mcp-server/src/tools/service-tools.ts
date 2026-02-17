@@ -1,0 +1,91 @@
+/**
+ * ROS2 service MCP tools: list, info, call.
+ */
+
+import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { CommandType } from '../bridge/protocol.js';
+import { ConnectionManager } from '../bridge/connection-manager.js';
+import { PolicyEngine } from '../safety/policy-engine.js';
+
+export function getServiceTools(): Tool[] {
+  return [
+    {
+      name: 'ros2_service_list',
+      description: 'List all available ROS2 services with their types',
+      inputSchema: zodToJsonSchema(z.object({})) as Tool['inputSchema'],
+    },
+    {
+      name: 'ros2_service_info',
+      description: 'Get detailed info about a specific ROS2 service',
+      inputSchema: zodToJsonSchema(z.object({
+        service: z.string().describe('Full service name (e.g. /spawn_entity)'),
+      })) as Tool['inputSchema'],
+    },
+    {
+      name: 'ros2_service_call',
+      description: 'Call a ROS2 service with given arguments. Subject to safety checks.',
+      inputSchema: zodToJsonSchema(z.object({
+        service: z.string().describe('Full service name'),
+        serviceType: z.string().describe('Service type (e.g. std_srvs/srv/SetBool)'),
+        args: z.record(z.unknown()).default({}).describe('Service call arguments as JSON'),
+      })) as Tool['inputSchema'],
+    },
+  ];
+}
+
+export async function handleServiceTool(
+  name: string,
+  args: Record<string, unknown>,
+  connection: ConnectionManager,
+  safety: PolicyEngine
+): Promise<{ content: { type: string; text: string }[]; isError?: boolean }> {
+  switch (name) {
+    case 'ros2_service_list': {
+      const response = await connection.send(CommandType.SERVICE_LIST);
+      if (response.status === 'error') {
+        return { content: [{ type: 'text', text: `Error: ${JSON.stringify(response.data)}` }], isError: true };
+      }
+      return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+    }
+
+    case 'ros2_service_info': {
+      const response = await connection.send(CommandType.SERVICE_INFO, { service: args.service });
+      if (response.status === 'error') {
+        return { content: [{ type: 'text', text: `Error: ${JSON.stringify(response.data)}` }], isError: true };
+      }
+      return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+    }
+
+    case 'ros2_service_call': {
+      const service = args.service as string;
+      const callArgs = (args.args || {}) as Record<string, unknown>;
+
+      // SAFETY CHECK
+      const check = safety.checkServiceCall(service, callArgs);
+      if (!check.allowed) {
+        const violationText = check.violations
+          .map(v => `- [${v.type}] ${v.message}`)
+          .join('\n');
+        return {
+          content: [{ type: 'text', text: `SAFETY BLOCKED: Service call to ${service} denied.\n\nViolations:\n${violationText}` }],
+          isError: true,
+        };
+      }
+
+      const response = await connection.send(CommandType.SERVICE_CALL, {
+        service,
+        service_type: args.serviceType,
+        args: callArgs,
+      });
+      if (response.status === 'error') {
+        return { content: [{ type: 'text', text: `Error: ${JSON.stringify(response.data)}` }], isError: true };
+      }
+      return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
+    }
+
+    default:
+      return { content: [{ type: 'text', text: `Unknown service tool: ${name}` }], isError: true };
+  }
+}

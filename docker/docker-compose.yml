@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  sim:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.sim
+    network_mode: host
+    environment:
+      - DISPLAY=${DISPLAY}
+      - TURTLEBOT3_MODEL=burger
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    restart: unless-stopped
+
+  bridge:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.bridge
+    network_mode: host
+    depends_on:
+      - sim
+    restart: unless-stopped

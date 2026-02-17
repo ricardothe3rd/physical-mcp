@@ -1,0 +1,25 @@
+FROM ros:humble
+
+# Install Python deps
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy bridge package
+COPY packages/ros2-bridge/ /app/
+
+# Install Python dependencies
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# Install the bridge package
+RUN pip3 install -e .
+
+# Source ROS2 setup
+SHELL ["/bin/bash", "-c"]
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+
+EXPOSE 9090
+
+CMD ["bash", "-c", "source /opt/ros/humble/setup.bash && python3 -m physical_mcp_bridge.bridge_node"]
