@@ -9,28 +9,32 @@ import { CommandType } from '../bridge/protocol.js';
 import { ConnectionManager } from '../bridge/connection-manager.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
 
+function toInputSchema(schema: z.ZodType): Tool['inputSchema'] {
+  return zodToJsonSchema(schema) as unknown as Tool['inputSchema'];
+}
+
 export function getServiceTools(): Tool[] {
   return [
     {
       name: 'ros2_service_list',
       description: 'List all available ROS2 services with their types',
-      inputSchema: zodToJsonSchema(z.object({})) as Tool['inputSchema'],
+      inputSchema: toInputSchema(z.object({})),
     },
     {
       name: 'ros2_service_info',
       description: 'Get detailed info about a specific ROS2 service',
-      inputSchema: zodToJsonSchema(z.object({
+      inputSchema: toInputSchema(z.object({
         service: z.string().describe('Full service name (e.g. /spawn_entity)'),
-      })) as Tool['inputSchema'],
+      })),
     },
     {
       name: 'ros2_service_call',
       description: 'Call a ROS2 service with given arguments. Subject to safety checks.',
-      inputSchema: zodToJsonSchema(z.object({
+      inputSchema: toInputSchema(z.object({
         service: z.string().describe('Full service name'),
         serviceType: z.string().describe('Service type (e.g. std_srvs/srv/SetBool)'),
         args: z.record(z.unknown()).default({}).describe('Service call arguments as JSON'),
-      })) as Tool['inputSchema'],
+      })),
     },
   ];
 }

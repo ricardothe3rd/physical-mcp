@@ -10,60 +10,64 @@ import { CommandType } from '../bridge/protocol.js';
 import { ConnectionManager } from '../bridge/connection-manager.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
 
+function toInputSchema(schema: z.ZodType): Tool['inputSchema'] {
+  return zodToJsonSchema(schema) as unknown as Tool['inputSchema'];
+}
+
 export function getSafetyTools(): Tool[] {
   return [
     {
       name: 'safety_status',
       description: 'Get current safety system status including policy, e-stop state, velocity limits, geofence, and audit stats',
-      inputSchema: zodToJsonSchema(z.object({})) as Tool['inputSchema'],
+      inputSchema: toInputSchema(z.object({})),
     },
     {
       name: 'safety_emergency_stop',
       description: 'EMERGENCY STOP - immediately halt all robot motion. Publishes zero velocity and blocks all further commands until released.',
-      inputSchema: zodToJsonSchema(z.object({
+      inputSchema: toInputSchema(z.object({
         reason: z.string().optional().describe('Reason for activating e-stop'),
-      })) as Tool['inputSchema'],
+      })),
     },
     {
       name: 'safety_emergency_stop_release',
       description: 'Release emergency stop and allow commands to resume',
-      inputSchema: zodToJsonSchema(z.object({
+      inputSchema: toInputSchema(z.object({
         confirmation: z.literal('CONFIRM_RELEASE').describe('Must be "CONFIRM_RELEASE" to proceed'),
-      })) as Tool['inputSchema'],
+      })),
     },
     {
       name: 'safety_get_policy',
       description: 'Get the current safety policy configuration (velocity limits, geofence, rate limits, blocked topics/services)',
-      inputSchema: zodToJsonSchema(z.object({})) as Tool['inputSchema'],
+      inputSchema: toInputSchema(z.object({})),
     },
     {
       name: 'safety_update_velocity_limits',
       description: 'Update velocity limits. Cannot exceed hardware maximums.',
-      inputSchema: zodToJsonSchema(z.object({
+      inputSchema: toInputSchema(z.object({
         linearMax: z.number().optional().describe('Max linear velocity in m/s'),
         angularMax: z.number().optional().describe('Max angular velocity in rad/s'),
-      })) as Tool['inputSchema'],
+      })),
     },
     {
       name: 'safety_update_geofence',
       description: 'Update geofence workspace boundaries',
-      inputSchema: zodToJsonSchema(z.object({
+      inputSchema: toInputSchema(z.object({
         xMin: z.number().optional(),
         xMax: z.number().optional(),
         yMin: z.number().optional(),
         yMax: z.number().optional(),
         zMin: z.number().optional(),
         zMax: z.number().optional(),
-      })) as Tool['inputSchema'],
+      })),
     },
     {
       name: 'safety_audit_log',
       description: 'View the command audit trail showing all commands and safety violations',
-      inputSchema: zodToJsonSchema(z.object({
+      inputSchema: toInputSchema(z.object({
         limit: z.number().default(20).describe('Number of entries to return'),
         violationsOnly: z.boolean().default(false).describe('Show only blocked commands'),
         command: z.string().optional().describe('Filter by command type'),
-      })) as Tool['inputSchema'],
+      })),
     },
   ];
 }

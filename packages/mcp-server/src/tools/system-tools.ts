@@ -8,17 +8,21 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { CommandType } from '../bridge/protocol.js';
 import { ConnectionManager } from '../bridge/connection-manager.js';
 
+function toInputSchema(schema: z.ZodType): Tool['inputSchema'] {
+  return zodToJsonSchema(schema) as unknown as Tool['inputSchema'];
+}
+
 export function getSystemTools(): Tool[] {
   return [
     {
       name: 'system_bridge_status',
       description: 'Get the connection status of the ROS2 bridge (WebSocket health, latency)',
-      inputSchema: zodToJsonSchema(z.object({})) as Tool['inputSchema'],
+      inputSchema: toInputSchema(z.object({})),
     },
     {
       name: 'system_node_list',
       description: 'List all active ROS2 nodes',
-      inputSchema: zodToJsonSchema(z.object({})) as Tool['inputSchema'],
+      inputSchema: toInputSchema(z.object({})),
     },
   ];
 }

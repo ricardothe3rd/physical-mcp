@@ -9,47 +9,52 @@ import { CommandType } from '../bridge/protocol.js';
 import { ConnectionManager } from '../bridge/connection-manager.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
 
+// Break zodToJsonSchema type inference chain to prevent tsc hang
+function toInputSchema(schema: z.ZodType): Tool['inputSchema'] {
+  return zodToJsonSchema(schema) as unknown as Tool['inputSchema'];
+}
+
 export function getTopicTools(): Tool[] {
   return [
     {
       name: 'ros2_topic_list',
       description: 'List all active ROS2 topics with their message types',
-      inputSchema: zodToJsonSchema(z.object({})) as Tool['inputSchema'],
+      inputSchema: toInputSchema(z.object({})),
     },
     {
       name: 'ros2_topic_info',
       description: 'Get detailed info about a specific ROS2 topic (type, publishers, subscribers)',
-      inputSchema: zodToJsonSchema(z.object({
+      inputSchema: toInputSchema(z.object({
         topic: z.string().describe('Full topic name (e.g. /cmd_vel)'),
-      })) as Tool['inputSchema'],
+      })),
     },
     {
       name: 'ros2_topic_subscribe',
       description: 'Subscribe to a topic and collect N messages',
-      inputSchema: zodToJsonSchema(z.object({
+      inputSchema: toInputSchema(z.object({
         topic: z.string().describe('Full topic name'),
         messageType: z.string().describe('Message type (e.g. geometry_msgs/msg/Twist)'),
         count: z.number().default(1).describe('Number of messages to collect'),
         timeoutSec: z.number().default(5).describe('Timeout in seconds'),
-      })) as Tool['inputSchema'],
+      })),
     },
     {
       name: 'ros2_topic_publish',
       description: 'Publish a message to a ROS2 topic. Subject to safety checks (velocity limits, geofence, rate limiting).',
-      inputSchema: zodToJsonSchema(z.object({
+      inputSchema: toInputSchema(z.object({
         topic: z.string().describe('Full topic name (e.g. /cmd_vel)'),
         messageType: z.string().describe('Message type (e.g. geometry_msgs/msg/Twist)'),
         message: z.record(z.unknown()).describe('Message data as JSON'),
-      })) as Tool['inputSchema'],
+      })),
     },
     {
       name: 'ros2_topic_echo',
       description: 'Get the latest message from a topic (one-shot)',
-      inputSchema: zodToJsonSchema(z.object({
+      inputSchema: toInputSchema(z.object({
         topic: z.string().describe('Full topic name'),
         messageType: z.string().describe('Message type'),
         timeoutSec: z.number().default(3).describe('Timeout in seconds'),
-      })) as Tool['inputSchema'],
+      })),
     },
   ];
 }

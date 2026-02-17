@@ -9,36 +9,40 @@ import { CommandType } from '../bridge/protocol.js';
 import { ConnectionManager } from '../bridge/connection-manager.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
 
+function toInputSchema(schema: z.ZodType): Tool['inputSchema'] {
+  return zodToJsonSchema(schema) as unknown as Tool['inputSchema'];
+}
+
 export function getActionTools(): Tool[] {
   return [
     {
       name: 'ros2_action_list',
       description: 'List all available ROS2 action servers',
-      inputSchema: zodToJsonSchema(z.object({})) as Tool['inputSchema'],
+      inputSchema: toInputSchema(z.object({})),
     },
     {
       name: 'ros2_action_send_goal',
       description: 'Send a goal to a ROS2 action server. Subject to safety checks.',
-      inputSchema: zodToJsonSchema(z.object({
+      inputSchema: toInputSchema(z.object({
         action: z.string().describe('Full action name (e.g. /navigate_to_pose)'),
         actionType: z.string().describe('Action type (e.g. nav2_msgs/action/NavigateToPose)'),
         goal: z.record(z.unknown()).describe('Goal data as JSON'),
-      })) as Tool['inputSchema'],
+      })),
     },
     {
       name: 'ros2_action_cancel',
       description: 'Cancel an active action goal',
-      inputSchema: zodToJsonSchema(z.object({
+      inputSchema: toInputSchema(z.object({
         action: z.string().describe('Full action name'),
         goalId: z.string().optional().describe('Specific goal ID to cancel (cancels all if omitted)'),
-      })) as Tool['inputSchema'],
+      })),
     },
     {
       name: 'ros2_action_status',
       description: 'Get the status of action goals',
-      inputSchema: zodToJsonSchema(z.object({
+      inputSchema: toInputSchema(z.object({
         action: z.string().describe('Full action name'),
-      })) as Tool['inputSchema'],
+      })),
     },
   ];
 }
