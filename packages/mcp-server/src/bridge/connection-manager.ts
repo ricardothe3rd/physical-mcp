@@ -7,6 +7,13 @@ import { WSClient, type BridgeResponse } from './ws-client.js';
 import { type CommandTypeValue } from './protocol.js';
 import { ErrorRecovery } from '../utils/error-recovery.js';
 
+/**
+ * Manages the WebSocket connection to the Python ROS2 bridge.
+ *
+ * Wraps WSClient with automatic reconnection (every 5s) and a circuit
+ * breaker that prevents cascading failures when the bridge is down.
+ * All MCP tool handlers send commands through this manager.
+ */
 export class ConnectionManager {
   private client: WSClient;
   private circuitBreaker: ReturnType<typeof ErrorRecovery.createCircuitBreaker>;

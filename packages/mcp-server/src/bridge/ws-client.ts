@@ -15,6 +15,14 @@ export interface BridgeResponse {
   timestamp: number;
 }
 
+/**
+ * WebSocket client for communicating with the Python ROS2 bridge.
+ *
+ * Handles connection lifecycle, request/response correlation via UUIDs,
+ * heartbeat pings, and stale connection detection. Each `send()` call
+ * returns a promise that resolves when the bridge responds or rejects
+ * on timeout.
+ */
 export class WSClient {
   private ws: WebSocket | null = null;
   private pendingRequests = new Map<string, {

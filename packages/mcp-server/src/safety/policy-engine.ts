@@ -9,6 +9,16 @@ import { RateLimiter } from './rate-limiter.js';
 import { AuditLogger } from './audit-logger.js';
 import { loadPolicy } from './policy-loader.js';
 
+/**
+ * Core safety evaluation engine.
+ *
+ * All publish, service, and action commands pass through the policy engine
+ * before reaching the ROS2 bridge. The engine enforces velocity limits,
+ * geofence boundaries, rate limits, blocked topics/services, emergency stop,
+ * and the deadman switch.
+ *
+ * Every command evaluation is recorded in the audit log regardless of outcome.
+ */
 export class PolicyEngine {
   private policy: SafetyPolicy;
   private rateLimiter: RateLimiter;
@@ -27,6 +37,18 @@ export class PolicyEngine {
     }
   }
 
+  /**
+   * Check whether a topic publish is allowed by the safety policy.
+   *
+   * Evaluates: e-stop → blocked topics → velocity limits → rate limits.
+   * In clamp mode, over-limit velocities are reduced to the maximum and
+   * the command is allowed with a warning. The message object may be
+   * mutated in-place when clamping.
+   *
+   * @param topic - The ROS2 topic name (e.g., "/cmd_vel")
+   * @param message - The message payload to publish
+   * @returns Safety check result with allowed flag and any violations
+   */
   checkPublish(topic: string, message: Record<string, unknown>): SafetyCheckResult {
     const violations: SafetyViolation[] = [];
 
@@ -73,6 +95,15 @@ export class PolicyEngine {
     return result;
   }
 
+  /**
+   * Check whether a service call is allowed by the safety policy.
+   *
+   * Evaluates: e-stop → blocked services → rate limits.
+   *
+   * @param service - The ROS2 service name (e.g., "/set_parameters")
+   * @param args - The service request arguments
+   * @returns Safety check result with allowed flag and any violations
+   */
   checkServiceCall(service: string, args: Record<string, unknown>): SafetyCheckResult {
     const violations: SafetyViolation[] = [];
 
@@ -106,6 +137,15 @@ export class PolicyEngine {
     return result;
   }
 
+  /**
+   * Check whether an action goal is allowed by the safety policy.
+   *
+   * Evaluates: e-stop → rate limits.
+   *
+   * @param action - The ROS2 action name (e.g., "/navigate_to_pose")
+   * @param goal - The action goal parameters
+   * @returns Safety check result with allowed flag and any violations
+   */
   checkActionGoal(action: string, goal: Record<string, unknown>): SafetyCheckResult {
     const violations: SafetyViolation[] = [];
 
@@ -202,13 +242,14 @@ export class PolicyEngine {
     return this.policy.blockedServices.some(s => service.startsWith(s));
   }
 
-  // Emergency stop
+  /** Activate emergency stop. Blocks all commands until released. */
   activateEmergencyStop(): void {
     this.emergencyStopActive = true;
     console.error('[PolicyEngine] EMERGENCY STOP ACTIVATED');
     this.auditLogger.log('emergency_stop', 'system', {}, { allowed: true, violations: [] });
   }
 
+  /** Release emergency stop and allow commands to resume. */
   releaseEmergencyStop(): void {
     this.emergencyStopActive = false;
     console.error('[PolicyEngine] Emergency stop released');
@@ -242,6 +283,7 @@ export class PolicyEngine {
     }
   }
 
+  /** Send a heartbeat to the deadman switch, resetting its timeout timer. */
   heartbeat(): void {
     this.lastHeartbeat = Date.now();
   }
