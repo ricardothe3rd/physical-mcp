@@ -9,17 +9,17 @@ import { getActionTools } from './action-tools.js';
 import { getSafetyTools, handleSafetyTool } from './safety-tools.js';
 import { getSystemTools } from './system-tools.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
-import { ConnectionManager } from '../bridge/connection-manager.js';
 
-// Mock ConnectionManager
-vi.mock('../bridge/connection-manager.js', () => ({
-  ConnectionManager: vi.fn().mockImplementation(() => ({
+// Create a simple mock object instead of mocking the module
+function createMockConnection() {
+  return {
     isConnected: false,
     connect: vi.fn(),
     send: vi.fn().mockResolvedValue({ id: '1', status: 'ok', data: {}, timestamp: Date.now() }),
     disconnect: vi.fn(),
-  })),
-}));
+    isBridgeAvailable: false,
+  } as any;
+}
 
 describe('Tool Definitions', () => {
   it('topic tools have correct count', () => {
@@ -44,7 +44,7 @@ describe('Tool Definitions', () => {
 
   it('safety tools have correct count', () => {
     const tools = getSafetyTools();
-    expect(tools.length).toBe(13);
+    expect(tools.length).toBe(14);
     expect(tools.map(t => t.name)).toContain('safety_emergency_stop');
     expect(tools.map(t => t.name)).toContain('safety_heartbeat');
     expect(tools.map(t => t.name)).toContain('safety_update_acceleration_limits');
@@ -100,24 +100,24 @@ describe('Tool Definitions', () => {
     }
   });
 
-  it('total tool count is 31', () => {
+  it('total tool count is 32', () => {
     const total =
       getTopicTools().length +
       getServiceTools().length +
       getActionTools().length +
       getSafetyTools().length +
       getSystemTools().length;
-    expect(total).toBe(31);
+    expect(total).toBe(32);
   });
 });
 
 describe('Safety Tool Handlers', () => {
   let safety: PolicyEngine;
-  let connection: ConnectionManager;
+  let connection: ReturnType<typeof createMockConnection>;
 
   beforeEach(() => {
     safety = new PolicyEngine();
-    connection = new ConnectionManager();
+    connection = createMockConnection();
   });
 
   it('safety_status returns JSON status', async () => {

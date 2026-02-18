@@ -7,6 +7,7 @@ import type { SafetyPolicy, SafetyCheckResult, SafetyViolation, VelocityLimits, 
 import { checkGeofence, type Position } from './geofence.js';
 import { RateLimiter } from './rate-limiter.js';
 import { AuditLogger } from './audit-logger.js';
+import { SafetyScoreTracker } from './safety-score.js';
 import { loadPolicy } from './policy-loader.js';
 
 /**
@@ -23,6 +24,7 @@ export class PolicyEngine {
   private policy: SafetyPolicy;
   private rateLimiter: RateLimiter;
   private auditLogger: AuditLogger;
+  private scoreTracker: SafetyScoreTracker;
   private emergencyStopActive = false;
   private lastHeartbeat = Date.now();
   private deadmanTimer: ReturnType<typeof setInterval> | null = null;
@@ -34,6 +36,7 @@ export class PolicyEngine {
     this.policy = loadPolicy(policyPath);
     this.rateLimiter = new RateLimiter(this.policy.rateLimits);
     this.auditLogger = new AuditLogger();
+    this.scoreTracker = new SafetyScoreTracker();
     console.error(`[PolicyEngine] Loaded policy: ${this.policy.name}`);
     if (this.policy.deadmanSwitch.enabled) {
       this.startDeadmanSwitch();
@@ -100,6 +103,12 @@ export class PolicyEngine {
       violations: [...violations, ...clampWarnings],
     };
 
+    if (result.allowed) {
+      this.scoreTracker.recordAllowed();
+    } else {
+      this.scoreTracker.recordBlocked(violations.map(v => v.type));
+    }
+
     this.auditLogger.log('publish', topic, message, result);
     return result;
   }
@@ -142,6 +151,12 @@ export class PolicyEngine {
       violations,
     };
 
+    if (result.allowed) {
+      this.scoreTracker.recordAllowed();
+    } else {
+      this.scoreTracker.recordBlocked(violations.map(v => v.type));
+    }
+
     this.auditLogger.log('service_call', service, args, result);
     return result;
   }
@@ -174,6 +189,12 @@ export class PolicyEngine {
       allowed: violations.length === 0,
       violations,
     };
+
+    if (result.allowed) {
+      this.scoreTracker.recordAllowed();
+    } else {
+      this.scoreTracker.recordBlocked(violations.map(v => v.type));
+    }
 
     this.auditLogger.log('action_goal', action, goal, result);
     return result;
@@ -455,6 +476,7 @@ export class PolicyEngine {
         timeSinceHeartbeat: Date.now() - this.lastHeartbeat,
       },
       rateLimiterStats: this.rateLimiter.getStats(),
+      safetyScore: this.scoreTracker.getSnapshot(),
       auditStats: this.auditLogger.getStats(),
     };
   }

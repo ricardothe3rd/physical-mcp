@@ -9,6 +9,7 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { CommandType } from '../bridge/protocol.js';
 import { ConnectionManager } from '../bridge/connection-manager.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
+import { validatePolicy } from '../safety/policy-validator.js';
 
 function toInputSchema(schema: z.ZodType): Tool['inputSchema'] {
   return zodToJsonSchema(schema) as unknown as Tool['inputSchema'];
@@ -114,6 +115,11 @@ export function getSafetyTools(): Tool[] {
         y: z.number().describe('Y position in meters'),
         z: z.number().describe('Z position in meters'),
       })),
+    },
+    {
+      name: 'safety_validate_policy',
+      description: 'Validate the current safety policy for errors and warnings',
+      inputSchema: toInputSchema(z.object({})),
     },
   ];
 }
@@ -280,6 +286,26 @@ export async function handleSafetyTool(
       const result = safety.checkPosition(position);
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+      };
+    }
+
+    case 'safety_validate_policy': {
+      const policy = safety.getPolicy();
+      const result = validatePolicy(policy);
+      const status = result.valid ? 'VALID' : 'INVALID';
+      let text = `Policy "${policy.name}": ${status}`;
+      if (result.errors.length > 0) {
+        text += `\n\nErrors:\n${result.errors.map(e => `  - ${e}`).join('\n')}`;
+      }
+      if (result.warnings.length > 0) {
+        text += `\n\nWarnings:\n${result.warnings.map(w => `  - ${w}`).join('\n')}`;
+      }
+      if (result.valid && result.warnings.length === 0) {
+        text += '\n\nNo issues found.';
+      }
+      return {
+        content: [{ type: 'text', text }],
+        isError: !result.valid ? true : undefined,
       };
     }
 
