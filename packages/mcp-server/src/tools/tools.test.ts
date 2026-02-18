@@ -8,6 +8,7 @@ import { getServiceTools } from './service-tools.js';
 import { getActionTools } from './action-tools.js';
 import { getSafetyTools, handleSafetyTool } from './safety-tools.js';
 import { getSystemTools } from './system-tools.js';
+import { getBatchTools } from './batch-tools.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
 
 // Create a simple mock object instead of mocking the module
@@ -59,6 +60,12 @@ describe('Tool Definitions', () => {
     expect(tools.map(t => t.name)).toContain('ros2_param_set');
   });
 
+  it('batch tools have correct count', () => {
+    const tools = getBatchTools();
+    expect(tools.length).toBe(1);
+    expect(tools.map(t => t.name)).toContain('ros2_batch_execute');
+  });
+
   it('all tools have unique names', () => {
     const allTools = [
       ...getTopicTools(),
@@ -66,6 +73,7 @@ describe('Tool Definitions', () => {
       ...getActionTools(),
       ...getSafetyTools(),
       ...getSystemTools(),
+      ...getBatchTools(),
     ];
     const names = allTools.map(t => t.name);
     const uniqueNames = new Set(names);
@@ -79,6 +87,7 @@ describe('Tool Definitions', () => {
       ...getActionTools(),
       ...getSafetyTools(),
       ...getSystemTools(),
+      ...getBatchTools(),
     ];
     for (const tool of allTools) {
       expect(tool.description).toBeTruthy();
@@ -93,6 +102,7 @@ describe('Tool Definitions', () => {
       ...getActionTools(),
       ...getSafetyTools(),
       ...getSystemTools(),
+      ...getBatchTools(),
     ];
     for (const tool of allTools) {
       expect(tool.inputSchema).toBeDefined();
@@ -100,14 +110,15 @@ describe('Tool Definitions', () => {
     }
   });
 
-  it('total tool count is 32', () => {
+  it('total tool count is 33', () => {
     const total =
       getTopicTools().length +
       getServiceTools().length +
       getActionTools().length +
       getSafetyTools().length +
-      getSystemTools().length;
-    expect(total).toBe(32);
+      getSystemTools().length +
+      getBatchTools().length;
+    expect(total).toBe(33);
   });
 });
 
