@@ -45,7 +45,7 @@ describe('Tool Definitions', () => {
 
   it('safety tools have correct count', () => {
     const tools = getSafetyTools();
-    expect(tools.length).toBe(14);
+    expect(tools.length).toBe(18);
     expect(tools.map(t => t.name)).toContain('safety_emergency_stop');
     expect(tools.map(t => t.name)).toContain('safety_heartbeat');
     expect(tools.map(t => t.name)).toContain('safety_update_acceleration_limits');
@@ -110,7 +110,7 @@ describe('Tool Definitions', () => {
     }
   });
 
-  it('total tool count is 33', () => {
+  it('total tool count is 37', () => {
     const total =
       getTopicTools().length +
       getServiceTools().length +
@@ -118,7 +118,7 @@ describe('Tool Definitions', () => {
       getSafetyTools().length +
       getSystemTools().length +
       getBatchTools().length;
-    expect(total).toBe(33);
+    expect(total).toBe(37);
   });
 });
 

@@ -34,6 +34,18 @@ export interface RateLimitConfig {
   actionPerMinute: number;  // max action goals per minute
 }
 
+export interface TopicVelocityOverride {
+  topic: string;               // topic name pattern (e.g., "/arm/cmd_vel")
+  linearMax?: number;          // override linear max for this topic
+  angularMax?: number;         // override angular max for this topic
+}
+
+export interface CommandApprovalConfig {
+  enabled: boolean;
+  requireApprovalFor: string[];  // tool names that need approval (e.g., "ros2_topic_publish", "ros2_action_send_goal")
+  pendingTimeout: number;        // ms before pending approval expires (default: 30000)
+}
+
 export interface SafetyPolicy {
   name: string;
   description: string;
@@ -47,6 +59,8 @@ export interface SafetyPolicy {
   blockedServices: string[];
   allowedTopics?: string[];     // if set, only these are allowed
   allowedServices?: string[];   // if set, only these are allowed
+  topicVelocityOverrides?: TopicVelocityOverride[]; // per-topic velocity limits
+  commandApproval: CommandApprovalConfig;
 }
 
 export type SafetyViolationType =
@@ -59,7 +73,8 @@ export type SafetyViolationType =
   | 'blocked_topic'
   | 'blocked_service'
   | 'emergency_stop_active'
-  | 'deadman_switch_timeout';
+  | 'deadman_switch_timeout'
+  | 'approval_required';
 
 export interface SafetyViolation {
   type: SafetyViolationType;

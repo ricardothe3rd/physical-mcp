@@ -121,6 +121,34 @@ export function getSafetyTools(): Tool[] {
       description: 'Validate the current safety policy for errors and warnings',
       inputSchema: toInputSchema(z.object({})),
     },
+    {
+      name: 'safety_approval_list',
+      description: 'List all pending command approval requests (human-in-the-loop mode)',
+      inputSchema: toInputSchema(z.object({})),
+    },
+    {
+      name: 'safety_approval_approve',
+      description: 'Approve a pending command execution',
+      inputSchema: toInputSchema(z.object({
+        approvalId: z.string().describe('The approval ID to approve'),
+      })),
+    },
+    {
+      name: 'safety_approval_deny',
+      description: 'Deny a pending command execution',
+      inputSchema: toInputSchema(z.object({
+        approvalId: z.string().describe('The approval ID to deny'),
+      })),
+    },
+    {
+      name: 'safety_approval_config',
+      description: 'View or update command approval configuration',
+      inputSchema: toInputSchema(z.object({
+        enabled: z.boolean().optional().describe('Enable/disable approval mode'),
+        requireApprovalFor: z.array(z.string()).optional().describe('Tool names requiring approval'),
+        pendingTimeout: z.number().optional().describe('Timeout in ms for pending approvals'),
+      })),
+    },
   ];
 }
 
@@ -306,6 +334,66 @@ export async function handleSafetyTool(
       return {
         content: [{ type: 'text', text }],
         isError: !result.valid ? true : undefined,
+      };
+    }
+
+    case 'safety_approval_list': {
+      const pending = safety.approval.getPendingApprovals();
+      if (pending.length === 0) {
+        return { content: [{ type: 'text', text: 'No pending approvals.' }] };
+      }
+      return {
+        content: [{
+          type: 'text',
+          text: `Pending approvals (${pending.length}):\n\n${JSON.stringify(pending, null, 2)}`,
+        }],
+      };
+    }
+
+    case 'safety_approval_approve': {
+      const id = args.approvalId as string;
+      const approved = safety.approval.approve(id);
+      if (!approved) {
+        return {
+          content: [{ type: 'text', text: `Approval "${id}" not found or expired.` }],
+          isError: true,
+        };
+      }
+      return {
+        content: [{ type: 'text', text: `Approval "${id}" APPROVED. The command can now execute.` }],
+      };
+    }
+
+    case 'safety_approval_deny': {
+      const id = args.approvalId as string;
+      const denied = safety.approval.deny(id);
+      if (!denied) {
+        return {
+          content: [{ type: 'text', text: `Approval "${id}" not found.` }],
+          isError: true,
+        };
+      }
+      return {
+        content: [{ type: 'text', text: `Approval "${id}" DENIED. The command will not execute.` }],
+      };
+    }
+
+    case 'safety_approval_config': {
+      const updates: Record<string, unknown> = {};
+      if (args.enabled !== undefined) updates.enabled = args.enabled;
+      if (args.requireApprovalFor !== undefined) updates.requireApprovalFor = args.requireApprovalFor;
+      if (args.pendingTimeout !== undefined) updates.pendingTimeout = args.pendingTimeout;
+
+      if (Object.keys(updates).length > 0) {
+        safety.approval.updateConfig(updates);
+      }
+
+      const config = safety.approval.getConfig();
+      return {
+        content: [{
+          type: 'text',
+          text: `Command approval config:\n${JSON.stringify(config, null, 2)}`,
+        }],
       };
     }
 

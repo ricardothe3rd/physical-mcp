@@ -3,7 +3,8 @@
  * All commands pass through here before reaching the bridge.
  */
 
-import type { SafetyPolicy, SafetyCheckResult, SafetyViolation, VelocityLimits, AccelerationLimits, GeofenceBounds, DeadmanSwitchConfig } from './types.js';
+import type { SafetyPolicy, SafetyCheckResult, SafetyViolation, VelocityLimits, AccelerationLimits, GeofenceBounds, DeadmanSwitchConfig, CommandApprovalConfig } from './types.js';
+import { CommandApprovalManager } from './command-approval.js';
 import { checkGeofence, type Position } from './geofence.js';
 import { RateLimiter } from './rate-limiter.js';
 import { AuditLogger } from './audit-logger.js';
@@ -28,6 +29,7 @@ export class PolicyEngine {
   private emergencyStopActive = false;
   private lastHeartbeat = Date.now();
   private deadmanTimer: ReturnType<typeof setInterval> | null = null;
+  private approvalManager: CommandApprovalManager;
   private lastLinearSpeed = 0;
   private lastAngularRate = 0;
   private lastVelocityTime = 0;
@@ -37,6 +39,7 @@ export class PolicyEngine {
     this.rateLimiter = new RateLimiter(this.policy.rateLimits);
     this.auditLogger = new AuditLogger();
     this.scoreTracker = new SafetyScoreTracker();
+    this.approvalManager = new CommandApprovalManager(this.policy.commandApproval);
     console.error(`[PolicyEngine] Loaded policy: ${this.policy.name}`);
     if (this.policy.deadmanSwitch.enabled) {
       this.startDeadmanSwitch();
@@ -79,7 +82,7 @@ export class PolicyEngine {
     // Check velocity limits for cmd_vel-like topics
     const clampWarnings: SafetyViolation[] = [];
     if (topic.includes('cmd_vel')) {
-      const velViolation = this.checkVelocityMessage(message);
+      const velViolation = this.checkVelocityMessage(message, topic);
       if (velViolation) {
         if (velViolation.type === 'velocity_clamped') {
           clampWarnings.push(velViolation);
@@ -200,10 +203,26 @@ export class PolicyEngine {
     return result;
   }
 
-  private checkVelocityMessage(message: Record<string, unknown>): SafetyViolation | null {
+  /** Get velocity limits for a specific topic, with per-topic overrides applied. */
+  private getVelocityLimitsForTopic(topic: string): VelocityLimits {
+    const base = this.policy.velocity;
+    const overrides = this.policy.topicVelocityOverrides;
+    if (!overrides || overrides.length === 0) return base;
+
+    const match = overrides.find(o => topic.includes(o.topic) || topic === o.topic);
+    if (!match) return base;
+
+    return {
+      linearMax: match.linearMax ?? base.linearMax,
+      angularMax: match.angularMax ?? base.angularMax,
+      clampMode: base.clampMode,
+    };
+  }
+
+  private checkVelocityMessage(message: Record<string, unknown>, topic = '/cmd_vel'): SafetyViolation | null {
     const linear = message.linear as Record<string, number> | undefined;
     const angular = message.angular as Record<string, number> | undefined;
-    const limits = this.policy.velocity;
+    const limits = this.getVelocityLimitsForTopic(topic);
 
     if (linear) {
       const speed = Math.sqrt((linear.x || 0) ** 2 + (linear.y || 0) ** 2 + (linear.z || 0) ** 2);
@@ -479,6 +498,11 @@ export class PolicyEngine {
       safetyScore: this.scoreTracker.getSnapshot(),
       auditStats: this.auditLogger.getStats(),
     };
+  }
+
+  /** Get the command approval manager for human-in-the-loop workflows. */
+  get approval(): CommandApprovalManager {
+    return this.approvalManager;
   }
 
   destroy(): void {

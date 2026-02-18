@@ -4,7 +4,7 @@
 
 import { readFileSync } from 'fs';
 import { parse as parseYaml } from 'yaml';
-import type { SafetyPolicy } from './types.js';
+import type { SafetyPolicy, TopicVelocityOverride } from './types.js';
 
 const DEFAULT_POLICY: SafetyPolicy = {
   name: 'default',
@@ -36,6 +36,11 @@ const DEFAULT_POLICY: SafetyPolicy = {
   },
   blockedTopics: ['/rosout', '/parameter_events'],
   blockedServices: ['/kill', '/shutdown'],
+  commandApproval: {
+    enabled: false,
+    requireApprovalFor: [],
+    pendingTimeout: 30000,
+  },
 };
 
 export function loadPolicy(filePath?: string): SafetyPolicy {
@@ -82,6 +87,11 @@ function mergePolicyWithDefaults(data: Record<string, unknown>): SafetyPolicy {
     blockedServices: (data.blockedServices as string[]) || DEFAULT_POLICY.blockedServices,
     allowedTopics: data.allowedTopics as string[] | undefined,
     allowedServices: data.allowedServices as string[] | undefined,
+    topicVelocityOverrides: data.topicVelocityOverrides as SafetyPolicy['topicVelocityOverrides'],
+    commandApproval: {
+      ...DEFAULT_POLICY.commandApproval,
+      ...(data.commandApproval as Record<string, unknown> || {}),
+    },
   };
 }
 
@@ -95,5 +105,6 @@ export function getDefaultPolicy(): SafetyPolicy {
     deadmanSwitch: { ...DEFAULT_POLICY.deadmanSwitch },
     blockedTopics: [...DEFAULT_POLICY.blockedTopics],
     blockedServices: [...DEFAULT_POLICY.blockedServices],
+    commandApproval: { ...DEFAULT_POLICY.commandApproval, requireApprovalFor: [...DEFAULT_POLICY.commandApproval.requireApprovalFor] },
   };
 }
