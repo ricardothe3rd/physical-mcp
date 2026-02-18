@@ -5,6 +5,7 @@
 
 import type { SafetyPolicy, SafetyCheckResult, SafetyViolation, VelocityLimits, AccelerationLimits, GeofenceBounds, DeadmanSwitchConfig, CommandApprovalConfig } from './types.js';
 import { CommandApprovalManager } from './command-approval.js';
+import { SafetyEventEmitter } from './event-emitter.js';
 import { checkGeofence, type Position } from './geofence.js';
 import { RateLimiter } from './rate-limiter.js';
 import { AuditLogger } from './audit-logger.js';
@@ -30,6 +31,7 @@ export class PolicyEngine {
   private lastHeartbeat = Date.now();
   private deadmanTimer: ReturnType<typeof setInterval> | null = null;
   private approvalManager: CommandApprovalManager;
+  private eventEmitter: SafetyEventEmitter;
   private lastLinearSpeed = 0;
   private lastAngularRate = 0;
   private lastVelocityTime = 0;
@@ -40,6 +42,7 @@ export class PolicyEngine {
     this.auditLogger = new AuditLogger();
     this.scoreTracker = new SafetyScoreTracker();
     this.approvalManager = new CommandApprovalManager(this.policy.commandApproval);
+    this.eventEmitter = new SafetyEventEmitter();
     console.error(`[PolicyEngine] Loaded policy: ${this.policy.name}`);
     if (this.policy.deadmanSwitch.enabled) {
       this.startDeadmanSwitch();
@@ -110,6 +113,11 @@ export class PolicyEngine {
       this.scoreTracker.recordAllowed();
     } else {
       this.scoreTracker.recordBlocked(violations.map(v => v.type));
+      this.eventEmitter.emit('violation', {
+        command: 'publish',
+        target: topic,
+        violations: violations.map(v => ({ type: v.type, message: v.message })),
+      });
     }
 
     this.auditLogger.log('publish', topic, message, result);
@@ -381,6 +389,7 @@ export class PolicyEngine {
     this.emergencyStopActive = true;
     console.error('[PolicyEngine] EMERGENCY STOP ACTIVATED');
     this.auditLogger.log('emergency_stop', 'system', {}, { allowed: true, violations: [] });
+    this.eventEmitter.emit('emergency_stop_activated', {});
   }
 
   /** Release emergency stop and allow commands to resume. */
@@ -388,6 +397,7 @@ export class PolicyEngine {
     this.emergencyStopActive = false;
     console.error('[PolicyEngine] Emergency stop released');
     this.auditLogger.log('emergency_stop_release', 'system', {}, { allowed: true, violations: [] });
+    this.eventEmitter.emit('emergency_stop_released', {});
   }
 
   get isEmergencyStopActive(): boolean {
@@ -503,6 +513,11 @@ export class PolicyEngine {
   /** Get the command approval manager for human-in-the-loop workflows. */
   get approval(): CommandApprovalManager {
     return this.approvalManager;
+  }
+
+  /** Get the safety event emitter for subscribing to violations and state changes. */
+  get events(): SafetyEventEmitter {
+    return this.eventEmitter;
   }
 
   destroy(): void {

@@ -9,6 +9,7 @@ import { getActionTools } from './action-tools.js';
 import { getSafetyTools, handleSafetyTool } from './safety-tools.js';
 import { getSystemTools } from './system-tools.js';
 import { getBatchTools } from './batch-tools.js';
+import { getRecordingTools } from './recording-tools.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
 
 // Create a simple mock object instead of mocking the module
@@ -66,6 +67,13 @@ describe('Tool Definitions', () => {
     expect(tools.map(t => t.name)).toContain('ros2_batch_execute');
   });
 
+  it('recording tools have correct count', () => {
+    const tools = getRecordingTools();
+    expect(tools.length).toBe(3);
+    expect(tools.map(t => t.name)).toContain('ros2_topic_record_start');
+    expect(tools.map(t => t.name)).toContain('ros2_topic_record_stop');
+  });
+
   it('all tools have unique names', () => {
     const allTools = [
       ...getTopicTools(),
@@ -74,6 +82,7 @@ describe('Tool Definitions', () => {
       ...getSafetyTools(),
       ...getSystemTools(),
       ...getBatchTools(),
+      ...getRecordingTools(),
     ];
     const names = allTools.map(t => t.name);
     const uniqueNames = new Set(names);
@@ -88,6 +97,7 @@ describe('Tool Definitions', () => {
       ...getSafetyTools(),
       ...getSystemTools(),
       ...getBatchTools(),
+      ...getRecordingTools(),
     ];
     for (const tool of allTools) {
       expect(tool.description).toBeTruthy();
@@ -103,6 +113,7 @@ describe('Tool Definitions', () => {
       ...getSafetyTools(),
       ...getSystemTools(),
       ...getBatchTools(),
+      ...getRecordingTools(),
     ];
     for (const tool of allTools) {
       expect(tool.inputSchema).toBeDefined();
@@ -110,15 +121,16 @@ describe('Tool Definitions', () => {
     }
   });
 
-  it('total tool count is 37', () => {
+  it('total tool count is 40', () => {
     const total =
       getTopicTools().length +
       getServiceTools().length +
       getActionTools().length +
       getSafetyTools().length +
       getSystemTools().length +
-      getBatchTools().length;
-    expect(total).toBe(37);
+      getBatchTools().length +
+      getRecordingTools().length;
+    expect(total).toBe(40);
   });
 });
 

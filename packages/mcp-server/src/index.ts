@@ -27,6 +27,7 @@ import { getActionTools, handleActionTool } from './tools/action-tools.js';
 import { getSafetyTools, handleSafetyTool } from './tools/safety-tools.js';
 import { getSystemTools, handleSystemTool } from './tools/system-tools.js';
 import { getBatchTools, handleBatchTool } from './tools/batch-tools.js';
+import { getRecordingTools, handleRecordingTool } from './tools/recording-tools.js';
 
 // --- CLI argument parsing ---
 function parseArgs(): { bridgeUrl: string; policyPath?: string; verbose: boolean } {
@@ -118,6 +119,7 @@ const allTools = [
   ...getSafetyTools(),
   ...getSystemTools(),
   ...getBatchTools(),
+  ...getRecordingTools(),
 ];
 
 // Tool name -> category mapping for dispatch
@@ -127,6 +129,7 @@ const actionToolNames = new Set(getActionTools().map(t => t.name));
 const safetyToolNames = new Set(getSafetyTools().map(t => t.name));
 const systemToolNames = new Set(getSystemTools().map(t => t.name));
 const batchToolNames = new Set(getBatchTools().map(t => t.name));
+const recordingToolNames = new Set(getRecordingTools().map(t => t.name));
 
 // List tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -175,6 +178,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
     if (batchToolNames.has(name)) {
       return await handleBatchTool(name, toolArgs, connection, safety);
+    }
+    if (recordingToolNames.has(name)) {
+      return await handleRecordingTool(name, toolArgs, connection);
     }
 
     return {
