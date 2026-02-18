@@ -19,6 +19,7 @@ import {
 
 import { ConnectionManager } from './bridge/connection-manager.js';
 import { PolicyEngine } from './safety/policy-engine.js';
+import { runStartupChecks, printStartupChecks } from './utils/startup-check.js';
 
 import { getTopicTools, handleTopicTool } from './tools/topic-tools.js';
 import { getServiceTools, handleServiceTool } from './tools/service-tools.js';
@@ -83,6 +84,13 @@ Environment variables:
 }
 
 const config = parseArgs();
+
+// Startup self-test
+const startupResult = runStartupChecks(config);
+printStartupChecks(startupResult);
+if (!startupResult.passed) {
+  process.exit(1);
+}
 
 // Core instances
 const connection = new ConnectionManager(config.bridgeUrl);
