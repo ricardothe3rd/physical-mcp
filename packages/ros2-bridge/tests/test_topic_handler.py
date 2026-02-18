@@ -1,24 +1,13 @@
 """Tests for the ROS2 topic handler.
 
-All rclpy and rosidl dependencies are mocked so tests run without ROS2 installed.
+All rclpy and rosidl dependencies are mocked via conftest.py so tests run
+without ROS2 installed.
 """
 
-import sys
-import threading
 from collections import OrderedDict
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 import pytest
-
-# ---------------------------------------------------------------------------
-# Mock rclpy and rosidl_runtime_py before importing the module under test.
-# ---------------------------------------------------------------------------
-sys.modules.setdefault("rclpy", MagicMock())
-sys.modules.setdefault("rclpy.node", MagicMock())
-_mock_rosidl_utils = MagicMock()
-_mock_rosidl_runtime = MagicMock()
-sys.modules.setdefault("rosidl_runtime_py.utilities", _mock_rosidl_utils)
-sys.modules.setdefault("rosidl_runtime_py", _mock_rosidl_runtime)
 
 from physical_mcp_bridge.topic_handler import TopicHandler
 
@@ -64,8 +53,7 @@ class TestSetMessageFields:
         msg = MagicMock(spec=["x"])
         # spec limits hasattr to only "x"
         handler._set_message_fields(msg, {"nonexistent": 42})
-        # No exception should be raised; msg.x should be untouched.
-        assert not hasattr(msg, "nonexistent") or True  # just verify no crash
+        # No exception should be raised.
 
     def test_sets_multiple_fields(self, handler):
         msg = MagicMock()
@@ -103,12 +91,10 @@ class TestSubscribe:
         mock_msg_class = MagicMock()
         mock_get_message.return_value = mock_msg_class
 
-        # Simulate the callback being invoked immediately by create_subscription.
         sample = OrderedDict({"data": "hello"})
         mock_to_dict.return_value = sample
 
         def fake_create_subscription(msg_cls, topic, callback, qos):
-            # Fire the callback once to simulate receiving a message.
             callback(MagicMock())
             return MagicMock()
 
