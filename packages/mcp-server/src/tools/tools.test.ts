@@ -46,7 +46,7 @@ describe('Tool Definitions', () => {
 
   it('safety tools have correct count', () => {
     const tools = getSafetyTools();
-    expect(tools.length).toBe(18);
+    expect(tools.length).toBe(21);
     expect(tools.map(t => t.name)).toContain('safety_emergency_stop');
     expect(tools.map(t => t.name)).toContain('safety_heartbeat');
     expect(tools.map(t => t.name)).toContain('safety_update_acceleration_limits');
@@ -130,7 +130,7 @@ describe('Tool Definitions', () => {
       getSystemTools().length +
       getBatchTools().length +
       getRecordingTools().length;
-    expect(total).toBe(40);
+    expect(total).toBe(43);
   });
 });
 

@@ -6,6 +6,8 @@
 import type { SafetyPolicy, SafetyCheckResult, SafetyViolation, VelocityLimits, AccelerationLimits, GeofenceBounds, DeadmanSwitchConfig, CommandApprovalConfig } from './types.js';
 import { CommandApprovalManager } from './command-approval.js';
 import { SafetyEventEmitter } from './event-emitter.js';
+import { ViolationModeManager, type ViolationMode } from './violation-mode.js';
+import { applyTimePolicy, type TimePolicyConfig } from './time-policy.js';
 import { checkGeofence, type Position } from './geofence.js';
 import { RateLimiter } from './rate-limiter.js';
 import { AuditLogger } from './audit-logger.js';
@@ -32,6 +34,8 @@ export class PolicyEngine {
   private deadmanTimer: ReturnType<typeof setInterval> | null = null;
   private approvalManager: CommandApprovalManager;
   private eventEmitter: SafetyEventEmitter;
+  private violationMode: ViolationModeManager;
+  private timePolicyConfig: TimePolicyConfig = { enabled: false, schedules: [] };
   private lastLinearSpeed = 0;
   private lastAngularRate = 0;
   private lastVelocityTime = 0;
@@ -43,6 +47,7 @@ export class PolicyEngine {
     this.scoreTracker = new SafetyScoreTracker();
     this.approvalManager = new CommandApprovalManager(this.policy.commandApproval);
     this.eventEmitter = new SafetyEventEmitter();
+    this.violationMode = new ViolationModeManager();
     console.error(`[PolicyEngine] Loaded policy: ${this.policy.name}`);
     if (this.policy.deadmanSwitch.enabled) {
       this.startDeadmanSwitch();
@@ -120,8 +125,9 @@ export class PolicyEngine {
       });
     }
 
-    this.auditLogger.log('publish', topic, message, result);
-    return result;
+    const finalResult = this.violationMode.process(result);
+    this.auditLogger.log('publish', topic, message, finalResult);
+    return finalResult;
   }
 
   /**
@@ -168,8 +174,9 @@ export class PolicyEngine {
       this.scoreTracker.recordBlocked(violations.map(v => v.type));
     }
 
-    this.auditLogger.log('service_call', service, args, result);
-    return result;
+    const finalResult = this.violationMode.process(result);
+    this.auditLogger.log('service_call', service, args, finalResult);
+    return finalResult;
   }
 
   /**
@@ -207,8 +214,9 @@ export class PolicyEngine {
       this.scoreTracker.recordBlocked(violations.map(v => v.type));
     }
 
-    this.auditLogger.log('action_goal', action, goal, result);
-    return result;
+    const finalResult = this.violationMode.process(result);
+    this.auditLogger.log('action_goal', action, goal, finalResult);
+    return finalResult;
   }
 
   /** Get velocity limits for a specific topic, with per-topic overrides applied. */
@@ -507,6 +515,13 @@ export class PolicyEngine {
       rateLimiterStats: this.rateLimiter.getStats(),
       safetyScore: this.scoreTracker.getSnapshot(),
       auditStats: this.auditLogger.getStats(),
+      violationMode: this.violationMode.getStats(),
+      timePolicy: {
+        enabled: this.timePolicyConfig.enabled,
+        scheduleCount: this.timePolicyConfig.schedules.length,
+        ...this.getEffectivePolicy(),
+        activeSchedule: this.getEffectivePolicy().activeSchedule,
+      },
     };
   }
 
@@ -518,6 +533,38 @@ export class PolicyEngine {
   /** Get the safety event emitter for subscribing to violations and state changes. */
   get events(): SafetyEventEmitter {
     return this.eventEmitter;
+  }
+
+  // Violation mode
+  getViolationMode(): ViolationMode {
+    return this.violationMode.getMode();
+  }
+
+  setViolationMode(mode: ViolationMode): void {
+    this.violationMode.setMode(mode);
+    console.error(`[PolicyEngine] Violation mode set to: ${mode}`);
+  }
+
+  getViolationModeStats() {
+    return this.violationMode.getStats();
+  }
+
+  // Time-based policies
+  getTimePolicyConfig(): TimePolicyConfig {
+    return this.timePolicyConfig;
+  }
+
+  setTimePolicyConfig(config: TimePolicyConfig): void {
+    this.timePolicyConfig = config;
+    console.error(`[PolicyEngine] Time policy ${config.enabled ? 'enabled' : 'disabled'} (${config.schedules.length} schedules)`);
+  }
+
+  /**
+   * Get the effective policy considering time-based overrides.
+   * Returns the base policy merged with any active time schedule.
+   */
+  getEffectivePolicy(now: Date = new Date()): { policy: SafetyPolicy; activeSchedule: string | null } {
+    return applyTimePolicy(this.policy, this.timePolicyConfig, now);
   }
 
   destroy(): void {

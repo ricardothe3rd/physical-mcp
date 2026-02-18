@@ -149,6 +149,39 @@ export function getSafetyTools(): Tool[] {
         pendingTimeout: z.number().optional().describe('Timeout in ms for pending approvals'),
       })),
     },
+    {
+      name: 'safety_violation_mode',
+      description: 'Get or set the violation mode. "block" (default) prevents dangerous commands. "warn" allows commands through but logs violations — useful during development.',
+      inputSchema: toInputSchema(z.object({
+        mode: z.enum(['block', 'warn']).optional().describe('Set violation mode: "block" or "warn"'),
+      })),
+    },
+    {
+      name: 'safety_time_policy',
+      description: 'View or configure time-based safety policies. Different limits can apply at different times of day (e.g., conservative at night, normal during supervised hours).',
+      inputSchema: toInputSchema(z.object({
+        enabled: z.boolean().optional().describe('Enable/disable time-based policies'),
+        schedules: z.array(z.object({
+          name: z.string().describe('Schedule name'),
+          startHour: z.number().min(0).max(23).describe('Start hour (0-23)'),
+          endHour: z.number().min(0).max(23).describe('End hour (0-23, exclusive)'),
+          daysOfWeek: z.array(z.number().min(0).max(6)).optional().describe('Days of week (0=Sun, 6=Sat)'),
+          overrides: z.object({
+            velocity: z.object({
+              linearMax: z.number().optional(),
+              angularMax: z.number().optional(),
+            }).optional(),
+            blockedTopics: z.array(z.string()).optional(),
+            description: z.string().optional(),
+          }).optional().describe('Policy overrides for this time window'),
+        })).optional().describe('Time schedules'),
+      })),
+    },
+    {
+      name: 'safety_time_policy_status',
+      description: 'Check which time-based policy schedule is currently active',
+      inputSchema: toInputSchema(z.object({})),
+    },
   ];
 }
 
@@ -394,6 +427,60 @@ export async function handleSafetyTool(
           type: 'text',
           text: `Command approval config:\n${JSON.stringify(config, null, 2)}`,
         }],
+      };
+    }
+
+    case 'safety_violation_mode': {
+      if (args.mode !== undefined) {
+        safety.setViolationMode(args.mode as 'block' | 'warn');
+      }
+      const stats = safety.getViolationModeStats();
+      const modeText = stats.mode === 'warn'
+        ? 'WARNING: Violation mode is "warn" — dangerous commands will be allowed through with warnings logged.'
+        : 'Violation mode is "block" — dangerous commands are prevented.';
+      return {
+        content: [{
+          type: 'text',
+          text: `${modeText}\n\nStats: ${JSON.stringify(stats, null, 2)}`,
+        }],
+      };
+    }
+
+    case 'safety_time_policy': {
+      if (args.enabled !== undefined || args.schedules !== undefined) {
+        const current = safety.getTimePolicyConfig();
+        const updated = {
+          enabled: (args.enabled as boolean) ?? current.enabled,
+          schedules: (args.schedules as any[]) ?? current.schedules,
+        };
+        safety.setTimePolicyConfig(updated);
+      }
+      const config = safety.getTimePolicyConfig();
+      return {
+        content: [{
+          type: 'text',
+          text: `Time-based policies: ${config.enabled ? 'ENABLED' : 'DISABLED'}\n\nSchedules (${config.schedules.length}):\n${JSON.stringify(config.schedules, null, 2)}`,
+        }],
+      };
+    }
+
+    case 'safety_time_policy_status': {
+      const { policy, activeSchedule } = safety.getEffectivePolicy();
+      if (activeSchedule) {
+        return {
+          content: [{
+            type: 'text',
+            text: `Active time schedule: "${activeSchedule}"\n\nEffective policy:\n${JSON.stringify({
+              name: policy.name,
+              velocity: policy.velocity,
+              geofence: policy.geofence,
+              blockedTopics: policy.blockedTopics,
+            }, null, 2)}`,
+          }],
+        };
+      }
+      return {
+        content: [{ type: 'text', text: 'No time-based schedule is currently active. Using base policy.' }],
       };
     }
 
