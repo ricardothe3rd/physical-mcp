@@ -57,6 +57,51 @@ export class RateLimiter {
     Object.assign(this.config, config);
   }
 
+  getStats(): { activeWindows: number; entries: { key: string; count: number; limit: number }[] } {
+    const now = Date.now();
+    const entries: { key: string; count: number; limit: number }[] = [];
+
+    for (const [key, window] of this.windows) {
+      // Determine the correct window and limit based on key prefix
+      let windowMs = 1000;
+      let limit = this.config.publishHz;
+      if (key.startsWith('service:')) {
+        windowMs = 60000;
+        limit = this.config.servicePerMinute;
+      } else if (key.startsWith('action:')) {
+        windowMs = 60000;
+        limit = this.config.actionPerMinute;
+      }
+
+      const validTimestamps = window.timestamps.filter(t => now - t < windowMs);
+      if (validTimestamps.length > 0) {
+        entries.push({ key, count: validTimestamps.length, limit });
+      }
+    }
+
+    return { activeWindows: entries.length, entries };
+  }
+
+  /**
+   * Remove stale windows that have no active timestamps.
+   * Call periodically to prevent memory leaks from abandoned topics.
+   */
+  cleanup(): number {
+    const now = Date.now();
+    let removed = 0;
+
+    for (const [key, window] of this.windows) {
+      // Use a conservative 60s window for cleanup
+      window.timestamps = window.timestamps.filter(t => now - t < 60000);
+      if (window.timestamps.length === 0) {
+        this.windows.delete(key);
+        removed++;
+      }
+    }
+
+    return removed;
+  }
+
   reset() {
     this.windows.clear();
   }

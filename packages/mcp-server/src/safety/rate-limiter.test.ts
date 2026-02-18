@@ -109,4 +109,100 @@ describe('RateLimiter', () => {
       expect(result).not.toBeNull();
     });
   });
+
+  describe('getStats', () => {
+    it('returns empty stats for fresh limiter', () => {
+      const stats = limiter.getStats();
+      expect(stats.activeWindows).toBe(0);
+      expect(stats.entries).toHaveLength(0);
+    });
+
+    it('tracks active publish windows', () => {
+      limiter.checkPublish('/cmd_vel');
+      limiter.checkPublish('/cmd_vel');
+      limiter.checkPublish('/odom');
+
+      const stats = limiter.getStats();
+      expect(stats.activeWindows).toBe(2);
+
+      const cmdVelEntry = stats.entries.find(e => e.key === 'publish:/cmd_vel');
+      expect(cmdVelEntry).toBeDefined();
+      expect(cmdVelEntry!.count).toBe(2);
+      expect(cmdVelEntry!.limit).toBe(3);
+
+      const odomEntry = stats.entries.find(e => e.key === 'publish:/odom');
+      expect(odomEntry).toBeDefined();
+      expect(odomEntry!.count).toBe(1);
+    });
+
+    it('tracks service windows with correct limits', () => {
+      limiter.checkService('/my_service');
+      limiter.checkService('/my_service');
+
+      const stats = limiter.getStats();
+      const entry = stats.entries.find(e => e.key === 'service:/my_service');
+      expect(entry).toBeDefined();
+      expect(entry!.count).toBe(2);
+      expect(entry!.limit).toBe(5); // servicePerMinute
+    });
+
+    it('tracks action windows with correct limits', () => {
+      limiter.checkAction('/navigate');
+
+      const stats = limiter.getStats();
+      const entry = stats.entries.find(e => e.key === 'action:/navigate');
+      expect(entry).toBeDefined();
+      expect(entry!.count).toBe(1);
+      expect(entry!.limit).toBe(2); // actionPerMinute
+    });
+  });
+
+  describe('cleanup', () => {
+    it('removes stale windows', () => {
+      vi.useFakeTimers();
+
+      limiter.checkPublish('/cmd_vel');
+      limiter.checkPublish('/odom');
+
+      // Advance past the cleanup window (60s)
+      vi.advanceTimersByTime(61000);
+
+      const removed = limiter.cleanup();
+      expect(removed).toBe(2);
+
+      const stats = limiter.getStats();
+      expect(stats.activeWindows).toBe(0);
+
+      vi.useRealTimers();
+    });
+
+    it('keeps active windows', () => {
+      limiter.checkPublish('/cmd_vel');
+
+      const removed = limiter.cleanup();
+      expect(removed).toBe(0);
+
+      const stats = limiter.getStats();
+      expect(stats.activeWindows).toBe(1);
+    });
+
+    it('partially cleans mixed windows', () => {
+      vi.useFakeTimers();
+
+      limiter.checkPublish('/old_topic');
+
+      vi.advanceTimersByTime(61000);
+
+      limiter.checkPublish('/new_topic');
+
+      const removed = limiter.cleanup();
+      expect(removed).toBe(1); // old_topic removed, new_topic kept
+
+      const stats = limiter.getStats();
+      expect(stats.activeWindows).toBe(1);
+      expect(stats.entries[0].key).toBe('publish:/new_topic');
+
+      vi.useRealTimers();
+    });
+  });
 });

@@ -89,6 +89,32 @@ export function getSafetyTools(): Tool[] {
       description: 'Send a heartbeat to the deadman switch to prevent automatic e-stop. Call periodically when deadman switch is enabled.',
       inputSchema: toInputSchema(z.object({})),
     },
+    {
+      name: 'safety_update_acceleration_limits',
+      description: 'Configure acceleration limits. When enabled, blocks commands that would cause velocity to change too quickly (prevents jerky motion).',
+      inputSchema: toInputSchema(z.object({
+        enabled: z.boolean().optional().describe('Enable/disable acceleration limiting'),
+        linearMaxAccel: z.number().optional().describe('Max linear acceleration in m/s²'),
+        angularMaxAccel: z.number().optional().describe('Max angular acceleration in rad/s²'),
+      })),
+    },
+    {
+      name: 'safety_export_audit_log',
+      description: 'Export the audit log to a JSON file',
+      inputSchema: toInputSchema(z.object({
+        filePath: z.string().describe('File path to export the audit log to'),
+        violationsOnly: z.boolean().default(false).describe('Export only violations'),
+      })),
+    },
+    {
+      name: 'safety_check_position',
+      description: 'Check if a position is within the geofence and get proximity warnings',
+      inputSchema: toInputSchema(z.object({
+        x: z.number().describe('X position in meters'),
+        y: z.number().describe('Y position in meters'),
+        z: z.number().describe('Z position in meters'),
+      })),
+    },
   ];
 }
 
@@ -211,6 +237,49 @@ export async function handleSafetyTool(
       safety.heartbeat();
       return {
         content: [{ type: 'text', text: 'Heartbeat received. Deadman switch timer reset.' }],
+      };
+    }
+
+    case 'safety_update_acceleration_limits': {
+      const updates: Record<string, unknown> = {};
+      if (args.enabled !== undefined) updates.enabled = args.enabled;
+      if (args.linearMaxAccel !== undefined) updates.linearMaxAccel = args.linearMaxAccel;
+      if (args.angularMaxAccel !== undefined) updates.angularMaxAccel = args.angularMaxAccel;
+      safety.updateAccelerationLimits(updates);
+      const policy = safety.getPolicy();
+      return {
+        content: [{
+          type: 'text',
+          text: `Acceleration limits updated:\n${JSON.stringify(policy.acceleration, null, 2)}`,
+        }],
+      };
+    }
+
+    case 'safety_export_audit_log': {
+      try {
+        const count = safety.exportAuditLog(
+          args.filePath as string,
+          { violationsOnly: args.violationsOnly as boolean || false }
+        );
+        return {
+          content: [{
+            type: 'text',
+            text: `Exported ${count} audit log entries to ${args.filePath}`,
+          }],
+        };
+      } catch (err) {
+        return {
+          content: [{ type: 'text', text: `Failed to export: ${err instanceof Error ? err.message : err}` }],
+          isError: true,
+        };
+      }
+    }
+
+    case 'safety_check_position': {
+      const position = { x: args.x as number, y: args.y as number, z: args.z as number };
+      const result = safety.checkPosition(position);
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
     }
 

@@ -6,6 +6,11 @@ velocity:
   angularMax: 1.5   # rad/s
   clampMode: false  # if true, reduce to max instead of blocking
 
+acceleration:
+  enabled: false           # enable to limit rate of velocity change
+  linearMaxAccel: 1.0      # m/s² — max linear acceleration
+  angularMaxAccel: 3.0     # rad/s² — max angular acceleration
+
 geofence:
   xMin: -5.0
   xMax: 5.0
@@ -13,6 +18,8 @@ geofence:
   yMax: 5.0
   zMin: 0.0
   zMax: 2.0
+
+geofenceWarningMargin: 1.0  # meters — warn when approaching boundary
 
 rateLimits:
   publishHz: 10          # max publishes per second

@@ -4,7 +4,7 @@
 [![npm version](https://img.shields.io/npm/v/@ricardothe3rd/physical-mcp)](https://www.npmjs.com/package/@ricardothe3rd/physical-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
-[![Tests](https://img.shields.io/badge/tests-106%20passing-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-196%20passing-brightgreen)](#testing)
 
 **Safety-first MCP server for ROS2 robots.** Bridge AI agents to physical systems with built-in velocity limits, geofence boundaries, emergency stop, rate limiting, and full audit logging.
 
@@ -18,7 +18,7 @@ npx @ricardothe3rd/physical-mcp
 - [What It Looks Like](#what-it-looks-like)
 - [Architecture](#architecture)
 - [Quick Start](#quick-start)
-- [MCP Tools (24)](#mcp-tools-24)
+- [MCP Tools (27)](#mcp-tools-27)
 - [Safety Layer](#safety-layer)
 - [Configuration](#configuration)
 - [Development](#development)
@@ -182,7 +182,7 @@ Ask Claude things like:
 - "Show me the safety status"
 - "Activate emergency stop"
 
-## MCP Tools (24)
+## MCP Tools (27)
 
 ### Topic Tools
 
@@ -225,6 +225,9 @@ Ask Claude things like:
 | `safety_set_clamp_mode` | Toggle velocity clamping (reduce to max vs block) |
 | `safety_deadman_switch` | Configure auto e-stop on heartbeat timeout |
 | `safety_heartbeat` | Send heartbeat to prevent deadman switch e-stop |
+| `safety_update_acceleration_limits` | Configure max acceleration/deceleration |
+| `safety_export_audit_log` | Export audit trail to JSON file |
+| `safety_check_position` | Check geofence compliance + proximity warnings |
 
 ### System Tools
 
@@ -311,6 +314,29 @@ deadmanSwitch:
 ```
 
 Call `safety_heartbeat` periodically to keep the robot active. If the AI agent disconnects, the deadman switch stops the robot automatically.
+
+### Acceleration Limits
+
+Prevent jerky motion by limiting how fast velocity can change:
+
+```yaml
+acceleration:
+  enabled: true
+  linearMaxAccel: 1.0    # m/s²
+  angularMaxAccel: 3.0   # rad/s²
+```
+
+When enabled, the engine tracks velocity over time and blocks commands that would require acceleration beyond the configured limits.
+
+### Geofence Proximity Warnings
+
+Get warned before hitting the boundary:
+
+```yaml
+geofenceWarningMargin: 1.0  # warn within 1m of boundary
+```
+
+Use `safety_check_position` to check any position against the geofence and get both violation status and proximity warnings.
 
 ### Emergency Stop
 

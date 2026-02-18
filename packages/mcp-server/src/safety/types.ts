@@ -8,6 +8,12 @@ export interface VelocityLimits {
   clampMode: boolean;  // if true, reduce to max instead of blocking
 }
 
+export interface AccelerationLimits {
+  linearMaxAccel: number;   // m/s² — max linear acceleration
+  angularMaxAccel: number;  // rad/s² — max angular acceleration
+  enabled: boolean;
+}
+
 export interface DeadmanSwitchConfig {
   enabled: boolean;
   timeoutMs: number;  // auto e-stop if no heartbeat within this duration
@@ -32,7 +38,9 @@ export interface SafetyPolicy {
   name: string;
   description: string;
   velocity: VelocityLimits;
+  acceleration: AccelerationLimits;
   geofence: GeofenceBounds;
+  geofenceWarningMargin: number; // meters — warn when within this distance of geofence boundary
   rateLimits: RateLimitConfig;
   deadmanSwitch: DeadmanSwitchConfig;
   blockedTopics: string[];
@@ -44,7 +52,9 @@ export interface SafetyPolicy {
 export type SafetyViolationType =
   | 'velocity_exceeded'
   | 'velocity_clamped'
+  | 'acceleration_exceeded'
   | 'geofence_violation'
+  | 'geofence_warning'
   | 'rate_limit_exceeded'
   | 'blocked_topic'
   | 'blocked_service'

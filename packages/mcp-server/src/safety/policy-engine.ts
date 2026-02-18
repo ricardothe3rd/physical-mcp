@@ -3,7 +3,7 @@
  * All commands pass through here before reaching the bridge.
  */
 
-import type { SafetyPolicy, SafetyCheckResult, SafetyViolation, VelocityLimits, GeofenceBounds, DeadmanSwitchConfig } from './types.js';
+import type { SafetyPolicy, SafetyCheckResult, SafetyViolation, VelocityLimits, AccelerationLimits, GeofenceBounds, DeadmanSwitchConfig } from './types.js';
 import { checkGeofence, type Position } from './geofence.js';
 import { RateLimiter } from './rate-limiter.js';
 import { AuditLogger } from './audit-logger.js';
@@ -26,6 +26,9 @@ export class PolicyEngine {
   private emergencyStopActive = false;
   private lastHeartbeat = Date.now();
   private deadmanTimer: ReturnType<typeof setInterval> | null = null;
+  private lastLinearSpeed = 0;
+  private lastAngularRate = 0;
+  private lastVelocityTime = 0;
 
   constructor(policyPath?: string) {
     this.policy = loadPolicy(policyPath);
@@ -80,6 +83,12 @@ export class PolicyEngine {
         } else {
           violations.push(velViolation);
         }
+      }
+
+      // Check acceleration limits
+      const accelViolation = this.checkAcceleration(message);
+      if (accelViolation) {
+        violations.push(accelViolation);
       }
     }
 
@@ -228,6 +237,91 @@ export class PolicyEngine {
     return null;
   }
 
+  private checkAcceleration(message: Record<string, unknown>): SafetyViolation | null {
+    const accelLimits = this.policy.acceleration;
+    if (!accelLimits.enabled) return null;
+
+    const linear = message.linear as Record<string, number> | undefined;
+    const angular = message.angular as Record<string, number> | undefined;
+    const now = Date.now();
+    const dt = this.lastVelocityTime > 0 ? (now - this.lastVelocityTime) / 1000 : 0;
+
+    if (dt <= 0 || dt > 2) {
+      // First command or too much time passed — just record state
+      if (linear) {
+        this.lastLinearSpeed = Math.sqrt((linear.x || 0) ** 2 + (linear.y || 0) ** 2 + (linear.z || 0) ** 2);
+      }
+      if (angular) {
+        this.lastAngularRate = Math.sqrt((angular.x || 0) ** 2 + (angular.y || 0) ** 2 + (angular.z || 0) ** 2);
+      }
+      this.lastVelocityTime = now;
+      return null;
+    }
+
+    const violations: string[] = [];
+
+    if (linear) {
+      const speed = Math.sqrt((linear.x || 0) ** 2 + (linear.y || 0) ** 2 + (linear.z || 0) ** 2);
+      const linearAccel = Math.abs(speed - this.lastLinearSpeed) / dt;
+      if (linearAccel > accelLimits.linearMaxAccel) {
+        violations.push(`linear accel ${linearAccel.toFixed(2)} m/s² exceeds limit ${accelLimits.linearMaxAccel} m/s²`);
+      }
+      this.lastLinearSpeed = speed;
+    }
+
+    if (angular) {
+      const rate = Math.sqrt((angular.x || 0) ** 2 + (angular.y || 0) ** 2 + (angular.z || 0) ** 2);
+      const angularAccel = Math.abs(rate - this.lastAngularRate) / dt;
+      if (angularAccel > accelLimits.angularMaxAccel) {
+        violations.push(`angular accel ${angularAccel.toFixed(2)} rad/s² exceeds limit ${accelLimits.angularMaxAccel} rad/s²`);
+      }
+      this.lastAngularRate = rate;
+    }
+
+    this.lastVelocityTime = now;
+
+    if (violations.length > 0) {
+      return {
+        type: 'acceleration_exceeded',
+        message: `Acceleration limit exceeded: ${violations.join(', ')}`,
+        details: { violations, dt },
+        timestamp: now,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if a position is near the geofence boundary.
+   * Returns a warning (non-blocking) if within the warning margin.
+   */
+  checkGeofenceProximity(position: Position): SafetyViolation | null {
+    const margin = this.policy.geofenceWarningMargin;
+    if (margin <= 0) return null;
+
+    const b = this.policy.geofence;
+    const warnings: string[] = [];
+
+    if (position.x - b.xMin < margin) warnings.push(`x=${position.x} within ${margin}m of xMin=${b.xMin}`);
+    if (b.xMax - position.x < margin) warnings.push(`x=${position.x} within ${margin}m of xMax=${b.xMax}`);
+    if (position.y - b.yMin < margin) warnings.push(`y=${position.y} within ${margin}m of yMin=${b.yMin}`);
+    if (b.yMax - position.y < margin) warnings.push(`y=${position.y} within ${margin}m of yMax=${b.yMax}`);
+    if (position.z - b.zMin < margin) warnings.push(`z=${position.z} within ${margin}m of zMin=${b.zMin}`);
+    if (b.zMax - position.z < margin) warnings.push(`z=${position.z} within ${margin}m of zMax=${b.zMax}`);
+
+    if (warnings.length > 0) {
+      return {
+        type: 'geofence_warning',
+        message: `Approaching geofence boundary: ${warnings.join(', ')}`,
+        details: { position, margin, warnings },
+        timestamp: Date.now(),
+      };
+    }
+
+    return null;
+  }
+
   private isTopicBlocked(topic: string): boolean {
     if (this.policy.allowedTopics) {
       return !this.policy.allowedTopics.some(t => topic.startsWith(t));
@@ -310,6 +404,11 @@ export class PolicyEngine {
     console.error(`[PolicyEngine] Velocity limits updated: linear=${this.policy.velocity.linearMax}, angular=${this.policy.velocity.angularMax}, clamp=${this.policy.velocity.clampMode}`);
   }
 
+  updateAccelerationLimits(limits: Partial<AccelerationLimits>): void {
+    Object.assign(this.policy.acceleration, limits);
+    console.error(`[PolicyEngine] Acceleration limits updated: linear=${this.policy.acceleration.linearMaxAccel}, angular=${this.policy.acceleration.angularMaxAccel}, enabled=${this.policy.acceleration.enabled}`);
+  }
+
   updateGeofence(bounds: Partial<GeofenceBounds>): void {
     Object.assign(this.policy.geofence, bounds);
     console.error(`[PolicyEngine] Geofence updated`);
@@ -324,18 +423,38 @@ export class PolicyEngine {
     return this.auditLogger.getStats();
   }
 
+  exportAuditLog(filePath: string, options?: { violationsOnly?: boolean; command?: string }): number {
+    return this.auditLogger.exportToFile(filePath, options);
+  }
+
+  /**
+   * Check a position against geofence and return both violation and proximity warnings.
+   */
+  checkPosition(position: Position): { inside: boolean; violation: SafetyViolation | null; warning: SafetyViolation | null } {
+    const violation = checkGeofence(position, this.policy.geofence);
+    const warning = violation ? null : this.checkGeofenceProximity(position);
+    return {
+      inside: violation === null,
+      violation,
+      warning,
+    };
+  }
+
   getStatus() {
     return {
       policyName: this.policy.name,
       emergencyStopActive: this.emergencyStopActive,
       velocity: this.policy.velocity,
+      acceleration: this.policy.acceleration,
       geofence: this.policy.geofence,
+      geofenceWarningMargin: this.policy.geofenceWarningMargin,
       rateLimits: this.policy.rateLimits,
       deadmanSwitch: {
         ...this.policy.deadmanSwitch,
         lastHeartbeat: this.lastHeartbeat,
         timeSinceHeartbeat: Date.now() - this.lastHeartbeat,
       },
+      rateLimiterStats: this.rateLimiter.getStats(),
       auditStats: this.auditLogger.getStats(),
     };
   }

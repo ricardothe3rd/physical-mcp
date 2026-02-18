@@ -14,11 +14,17 @@ const DEFAULT_POLICY: SafetyPolicy = {
     angularMax: 1.5,
     clampMode: false,
   },
+  acceleration: {
+    linearMaxAccel: 1.0,
+    angularMaxAccel: 3.0,
+    enabled: false,
+  },
   geofence: {
     xMin: -5, xMax: 5,
     yMin: -5, yMax: 5,
     zMin: 0, zMax: 2,
   },
+  geofenceWarningMargin: 1.0,
   rateLimits: {
     publishHz: 10,
     servicePerMinute: 60,
@@ -55,10 +61,15 @@ function mergePolicyWithDefaults(data: Record<string, unknown>): SafetyPolicy {
       ...DEFAULT_POLICY.velocity,
       ...(data.velocity as Record<string, unknown> || {}),
     },
+    acceleration: {
+      ...DEFAULT_POLICY.acceleration,
+      ...(data.acceleration as Record<string, unknown> || {}),
+    },
     geofence: {
       ...DEFAULT_POLICY.geofence,
       ...(data.geofence as Record<string, number> || {}),
     },
+    geofenceWarningMargin: (data.geofenceWarningMargin as number) ?? DEFAULT_POLICY.geofenceWarningMargin,
     rateLimits: {
       ...DEFAULT_POLICY.rateLimits,
       ...(data.rateLimits as Record<string, number> || {}),

@@ -3,6 +3,7 @@
  */
 
 import { randomUUID } from 'crypto';
+import { writeFileSync } from 'fs';
 import type { AuditEntry, SafetyCheckResult } from './types.js';
 
 export class AuditLogger {
@@ -81,6 +82,31 @@ export class AuditLogger {
     const errors = this.entries.filter(e => e.executionResult === 'error').length;
 
     return { total, allowed: total - blocked, blocked, errors };
+  }
+
+  /**
+   * Export audit log to a JSON file.
+   * @returns The number of entries exported.
+   */
+  exportToFile(filePath: string, options?: {
+    violationsOnly?: boolean;
+    command?: string;
+  }): number {
+    let entries = this.getEntries(options);
+    const data = {
+      exportedAt: new Date().toISOString(),
+      stats: this.getStats(),
+      entries,
+    };
+    writeFileSync(filePath, JSON.stringify(data, null, 2));
+    return entries.length;
+  }
+
+  /**
+   * Get entries within a time range.
+   */
+  getEntriesByTimeRange(startMs: number, endMs: number): AuditEntry[] {
+    return this.entries.filter(e => e.timestamp >= startMs && e.timestamp <= endMs);
   }
 
   clear() {

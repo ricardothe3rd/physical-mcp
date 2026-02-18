@@ -6,6 +6,11 @@ velocity:
   angularMax: 2.84   # TurtleBot3 Burger max is 2.84 rad/s
   clampMode: true    # clamp to hardware max instead of blocking
 
+acceleration:
+  enabled: true
+  linearMaxAccel: 0.5      # gentle acceleration for TurtleBot3
+  angularMaxAccel: 2.0
+
 geofence:
   xMin: -10.0
   xMax: 10.0
@@ -13,6 +18,8 @@ geofence:
   yMax: 10.0
   zMin: 0.0
   zMax: 0.5
+
+geofenceWarningMargin: 2.0  # 2m warning zone for larger workspace
 
 rateLimits:
   publishHz: 30
