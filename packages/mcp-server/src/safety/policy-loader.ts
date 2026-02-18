@@ -86,5 +86,14 @@ function mergePolicyWithDefaults(data: Record<string, unknown>): SafetyPolicy {
 }
 
 export function getDefaultPolicy(): SafetyPolicy {
-  return { ...DEFAULT_POLICY };
+  return {
+    ...DEFAULT_POLICY,
+    velocity: { ...DEFAULT_POLICY.velocity },
+    acceleration: { ...DEFAULT_POLICY.acceleration },
+    geofence: { ...DEFAULT_POLICY.geofence },
+    rateLimits: { ...DEFAULT_POLICY.rateLimits },
+    deadmanSwitch: { ...DEFAULT_POLICY.deadmanSwitch },
+    blockedTopics: [...DEFAULT_POLICY.blockedTopics],
+    blockedServices: [...DEFAULT_POLICY.blockedServices],
+  };
 }

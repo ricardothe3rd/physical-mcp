@@ -15,6 +15,9 @@ export const CommandType = {
   ACTION_STATUS: 'action.status',
   NODE_LIST: 'node.list',
   GET_PARAMS: 'params.get',
+  SET_PARAMS: 'params.set',
+  LIST_PARAMS: 'params.list',
+  NODE_INFO: 'node.info',
   PING: 'ping',
   EMERGENCY_STOP: 'emergency_stop',
 } as const;

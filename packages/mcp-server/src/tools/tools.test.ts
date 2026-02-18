@@ -54,7 +54,9 @@ describe('Tool Definitions', () => {
 
   it('system tools have correct count', () => {
     const tools = getSystemTools();
-    expect(tools.length).toBe(2);
+    expect(tools.length).toBe(6);
+    expect(tools.map(t => t.name)).toContain('ros2_param_get');
+    expect(tools.map(t => t.name)).toContain('ros2_param_set');
   });
 
   it('all tools have unique names', () => {
@@ -98,14 +100,14 @@ describe('Tool Definitions', () => {
     }
   });
 
-  it('total tool count is 27', () => {
+  it('total tool count is 31', () => {
     const total =
       getTopicTools().length +
       getServiceTools().length +
       getActionTools().length +
       getSafetyTools().length +
       getSystemTools().length;
-    expect(total).toBe(27);
+    expect(total).toBe(31);
   });
 });
 
