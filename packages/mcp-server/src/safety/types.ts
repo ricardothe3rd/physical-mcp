@@ -5,6 +5,12 @@
 export interface VelocityLimits {
   linearMax: number;   // m/s
   angularMax: number;  // rad/s
+  clampMode: boolean;  // if true, reduce to max instead of blocking
+}
+
+export interface DeadmanSwitchConfig {
+  enabled: boolean;
+  timeoutMs: number;  // auto e-stop if no heartbeat within this duration
 }
 
 export interface GeofenceBounds {
@@ -28,6 +34,7 @@ export interface SafetyPolicy {
   velocity: VelocityLimits;
   geofence: GeofenceBounds;
   rateLimits: RateLimitConfig;
+  deadmanSwitch: DeadmanSwitchConfig;
   blockedTopics: string[];
   blockedServices: string[];
   allowedTopics?: string[];     // if set, only these are allowed
@@ -36,11 +43,13 @@ export interface SafetyPolicy {
 
 export type SafetyViolationType =
   | 'velocity_exceeded'
+  | 'velocity_clamped'
   | 'geofence_violation'
   | 'rate_limit_exceeded'
   | 'blocked_topic'
   | 'blocked_service'
-  | 'emergency_stop_active';
+  | 'emergency_stop_active'
+  | 'deadman_switch_timeout';
 
 export interface SafetyViolation {
   type: SafetyViolationType;

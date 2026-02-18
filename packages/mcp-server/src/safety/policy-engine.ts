@@ -3,7 +3,7 @@
  * All commands pass through here before reaching the bridge.
  */
 
-import type { SafetyPolicy, SafetyCheckResult, SafetyViolation, VelocityLimits, GeofenceBounds } from './types.js';
+import type { SafetyPolicy, SafetyCheckResult, SafetyViolation, VelocityLimits, GeofenceBounds, DeadmanSwitchConfig } from './types.js';
 import { checkGeofence, type Position } from './geofence.js';
 import { RateLimiter } from './rate-limiter.js';
 import { AuditLogger } from './audit-logger.js';
@@ -14,12 +14,17 @@ export class PolicyEngine {
   private rateLimiter: RateLimiter;
   private auditLogger: AuditLogger;
   private emergencyStopActive = false;
+  private lastHeartbeat = Date.now();
+  private deadmanTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(policyPath?: string) {
     this.policy = loadPolicy(policyPath);
     this.rateLimiter = new RateLimiter(this.policy.rateLimits);
     this.auditLogger = new AuditLogger();
     console.error(`[PolicyEngine] Loaded policy: ${this.policy.name}`);
+    if (this.policy.deadmanSwitch.enabled) {
+      this.startDeadmanSwitch();
+    }
   }
 
   checkPublish(topic: string, message: Record<string, unknown>): SafetyCheckResult {
@@ -44,9 +49,16 @@ export class PolicyEngine {
     }
 
     // Check velocity limits for cmd_vel-like topics
+    const clampWarnings: SafetyViolation[] = [];
     if (topic.includes('cmd_vel')) {
       const velViolation = this.checkVelocityMessage(message);
-      if (velViolation) violations.push(velViolation);
+      if (velViolation) {
+        if (velViolation.type === 'velocity_clamped') {
+          clampWarnings.push(velViolation);
+        } else {
+          violations.push(velViolation);
+        }
+      }
     }
 
     const rateViolation = this.rateLimiter.checkPublish(topic);
@@ -54,7 +66,7 @@ export class PolicyEngine {
 
     const result: SafetyCheckResult = {
       allowed: violations.length === 0,
-      violations,
+      violations: [...violations, ...clampWarnings],
     };
 
     this.auditLogger.log('publish', topic, message, result);
@@ -126,6 +138,20 @@ export class PolicyEngine {
     if (linear) {
       const speed = Math.sqrt((linear.x || 0) ** 2 + (linear.y || 0) ** 2 + (linear.z || 0) ** 2);
       if (speed > limits.linearMax) {
+        if (limits.clampMode && speed > 0) {
+          // Clamp: scale down to max instead of blocking
+          const scale = limits.linearMax / speed;
+          linear.x = (linear.x || 0) * scale;
+          linear.y = (linear.y || 0) * scale;
+          linear.z = (linear.z || 0) * scale;
+          // Return a warning violation but still allow (caller checks clampMode)
+          return {
+            type: 'velocity_clamped',
+            message: `Linear velocity ${speed.toFixed(2)} m/s clamped to ${limits.linearMax} m/s`,
+            details: { original: speed, clamped: limits.linearMax, linear },
+            timestamp: Date.now(),
+          };
+        }
         return {
           type: 'velocity_exceeded',
           message: `Linear velocity ${speed.toFixed(2)} m/s exceeds limit of ${limits.linearMax} m/s`,
@@ -138,6 +164,18 @@ export class PolicyEngine {
     if (angular) {
       const rate = Math.sqrt((angular.x || 0) ** 2 + (angular.y || 0) ** 2 + (angular.z || 0) ** 2);
       if (rate > limits.angularMax) {
+        if (limits.clampMode && rate > 0) {
+          const scale = limits.angularMax / rate;
+          angular.x = (angular.x || 0) * scale;
+          angular.y = (angular.y || 0) * scale;
+          angular.z = (angular.z || 0) * scale;
+          return {
+            type: 'velocity_clamped',
+            message: `Angular velocity ${rate.toFixed(2)} rad/s clamped to ${limits.angularMax} rad/s`,
+            details: { original: rate, clamped: limits.angularMax, angular },
+            timestamp: Date.now(),
+          };
+        }
         return {
           type: 'velocity_exceeded',
           message: `Angular velocity ${rate.toFixed(2)} rad/s exceeds limit of ${limits.angularMax} rad/s`,
@@ -181,6 +219,45 @@ export class PolicyEngine {
     return this.emergencyStopActive;
   }
 
+  // Deadman switch
+  private startDeadmanSwitch(): void {
+    this.stopDeadmanSwitch();
+    this.lastHeartbeat = Date.now();
+    const checkInterval = Math.max(1000, this.policy.deadmanSwitch.timeoutMs / 3);
+    this.deadmanTimer = setInterval(() => {
+      if (!this.policy.deadmanSwitch.enabled) return;
+      const elapsed = Date.now() - this.lastHeartbeat;
+      if (elapsed > this.policy.deadmanSwitch.timeoutMs && !this.emergencyStopActive) {
+        console.error(`[PolicyEngine] Deadman switch timeout (${elapsed}ms) — activating e-stop`);
+        this.activateEmergencyStop();
+        this.auditLogger.log('deadman_switch_timeout', 'system', { elapsed }, { allowed: true, violations: [] });
+      }
+    }, checkInterval);
+  }
+
+  private stopDeadmanSwitch(): void {
+    if (this.deadmanTimer) {
+      clearInterval(this.deadmanTimer);
+      this.deadmanTimer = null;
+    }
+  }
+
+  heartbeat(): void {
+    this.lastHeartbeat = Date.now();
+  }
+
+  updateDeadmanSwitch(config: Partial<DeadmanSwitchConfig>): void {
+    const wasEnabled = this.policy.deadmanSwitch.enabled;
+    Object.assign(this.policy.deadmanSwitch, config);
+    if (this.policy.deadmanSwitch.enabled && !wasEnabled) {
+      this.startDeadmanSwitch();
+      console.error(`[PolicyEngine] Deadman switch enabled (timeout: ${this.policy.deadmanSwitch.timeoutMs}ms)`);
+    } else if (!this.policy.deadmanSwitch.enabled && wasEnabled) {
+      this.stopDeadmanSwitch();
+      console.error('[PolicyEngine] Deadman switch disabled');
+    }
+  }
+
   // Policy management
   getPolicy(): SafetyPolicy {
     return { ...this.policy };
@@ -188,7 +265,7 @@ export class PolicyEngine {
 
   updateVelocityLimits(limits: Partial<VelocityLimits>): void {
     Object.assign(this.policy.velocity, limits);
-    console.error(`[PolicyEngine] Velocity limits updated: linear=${this.policy.velocity.linearMax}, angular=${this.policy.velocity.angularMax}`);
+    console.error(`[PolicyEngine] Velocity limits updated: linear=${this.policy.velocity.linearMax}, angular=${this.policy.velocity.angularMax}, clamp=${this.policy.velocity.clampMode}`);
   }
 
   updateGeofence(bounds: Partial<GeofenceBounds>): void {
@@ -212,7 +289,16 @@ export class PolicyEngine {
       velocity: this.policy.velocity,
       geofence: this.policy.geofence,
       rateLimits: this.policy.rateLimits,
+      deadmanSwitch: {
+        ...this.policy.deadmanSwitch,
+        lastHeartbeat: this.lastHeartbeat,
+        timeSinceHeartbeat: Date.now() - this.lastHeartbeat,
+      },
       auditStats: this.auditLogger.getStats(),
     };
+  }
+
+  destroy(): void {
+    this.stopDeadmanSwitch();
   }
 }

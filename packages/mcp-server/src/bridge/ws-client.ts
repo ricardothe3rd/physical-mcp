@@ -24,6 +24,8 @@ export class WSClient {
   }>();
   private url: string;
   private requestTimeout: number;
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+  private lastPongTime = 0;
 
   constructor(url = 'ws://localhost:9090', requestTimeout = 10000) {
     this.url = url;
@@ -36,11 +38,17 @@ export class WSClient {
 
       this.ws.on('open', () => {
         console.error(`[WSClient] Connected to bridge at ${this.url}`);
+        this.lastPongTime = Date.now();
+        this.startHeartbeat();
         resolve();
       });
 
       this.ws.on('message', (data) => {
         this.handleMessage(data.toString());
+      });
+
+      this.ws.on('pong', () => {
+        this.lastPongTime = Date.now();
       });
 
       this.ws.on('error', (err) => {
@@ -50,10 +58,34 @@ export class WSClient {
 
       this.ws.on('close', (code, reason) => {
         console.error(`[WSClient] Connection closed: ${code} ${reason}`);
+        this.stopHeartbeat();
         this.rejectAllPending(new Error('Connection closed'));
         this.ws = null;
       });
     });
+  }
+
+  private startHeartbeat() {
+    this.stopHeartbeat();
+    this.heartbeatInterval = setInterval(() => {
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+
+      // If no pong received in 30s, connection is stale
+      if (Date.now() - this.lastPongTime > 30000) {
+        console.error('[WSClient] Heartbeat timeout — closing stale connection');
+        this.ws.terminate();
+        return;
+      }
+
+      this.ws.ping();
+    }, 15000); // ping every 15s
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
   }
 
   async send(type: CommandTypeValue, params: Record<string, unknown> = {}): Promise<BridgeResponse> {
@@ -100,6 +132,7 @@ export class WSClient {
   }
 
   disconnect() {
+    this.stopHeartbeat();
     if (this.ws) {
       this.rejectAllPending(new Error('Disconnecting'));
       this.ws.close();

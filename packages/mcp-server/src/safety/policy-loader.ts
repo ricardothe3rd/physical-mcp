@@ -12,6 +12,7 @@ const DEFAULT_POLICY: SafetyPolicy = {
   velocity: {
     linearMax: 0.5,
     angularMax: 1.5,
+    clampMode: false,
   },
   geofence: {
     xMin: -5, xMax: 5,
@@ -22,6 +23,10 @@ const DEFAULT_POLICY: SafetyPolicy = {
     publishHz: 10,
     servicePerMinute: 60,
     actionPerMinute: 30,
+  },
+  deadmanSwitch: {
+    enabled: false,
+    timeoutMs: 30000,
   },
   blockedTopics: ['/rosout', '/parameter_events'],
   blockedServices: ['/kill', '/shutdown'],
@@ -48,7 +53,7 @@ function mergePolicyWithDefaults(data: Record<string, unknown>): SafetyPolicy {
     description: (data.description as string) || DEFAULT_POLICY.description,
     velocity: {
       ...DEFAULT_POLICY.velocity,
-      ...(data.velocity as Record<string, number> || {}),
+      ...(data.velocity as Record<string, unknown> || {}),
     },
     geofence: {
       ...DEFAULT_POLICY.geofence,
@@ -57,6 +62,10 @@ function mergePolicyWithDefaults(data: Record<string, unknown>): SafetyPolicy {
     rateLimits: {
       ...DEFAULT_POLICY.rateLimits,
       ...(data.rateLimits as Record<string, number> || {}),
+    },
+    deadmanSwitch: {
+      ...DEFAULT_POLICY.deadmanSwitch,
+      ...(data.deadmanSwitch as Record<string, unknown> || {}),
     },
     blockedTopics: (data.blockedTopics as string[]) || DEFAULT_POLICY.blockedTopics,
     blockedServices: (data.blockedServices as string[]) || DEFAULT_POLICY.blockedServices,

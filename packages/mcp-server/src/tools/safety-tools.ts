@@ -69,6 +69,26 @@ export function getSafetyTools(): Tool[] {
         command: z.string().optional().describe('Filter by command type'),
       })),
     },
+    {
+      name: 'safety_set_clamp_mode',
+      description: 'Toggle velocity clamp mode. When enabled, over-limit velocities are reduced to max instead of being blocked.',
+      inputSchema: toInputSchema(z.object({
+        enabled: z.boolean().describe('true = clamp to max, false = block entirely'),
+      })),
+    },
+    {
+      name: 'safety_deadman_switch',
+      description: 'Configure the deadman switch. When enabled, auto-triggers e-stop if no heartbeat is received within the timeout period.',
+      inputSchema: toInputSchema(z.object({
+        enabled: z.boolean().optional().describe('Enable/disable the deadman switch'),
+        timeoutMs: z.number().optional().describe('Timeout in milliseconds before auto e-stop (default: 30000)'),
+      })),
+    },
+    {
+      name: 'safety_heartbeat',
+      description: 'Send a heartbeat to the deadman switch to prevent automatic e-stop. Call periodically when deadman switch is enabled.',
+      inputSchema: toInputSchema(z.object({})),
+    },
   ];
 }
 
@@ -157,6 +177,40 @@ export async function handleSafetyTool(
           type: 'text',
           text: `Audit Log (${stats.total} total, ${stats.blocked} blocked, ${stats.errors} errors)\n\n${JSON.stringify(entries, null, 2)}`,
         }],
+      };
+    }
+
+    case 'safety_set_clamp_mode': {
+      const enabled = args.enabled as boolean;
+      safety.updateVelocityLimits({ clampMode: enabled });
+      return {
+        content: [{
+          type: 'text',
+          text: enabled
+            ? 'Velocity clamp mode ENABLED. Over-limit velocities will be reduced to the maximum instead of being blocked.'
+            : 'Velocity clamp mode DISABLED. Over-limit velocities will be blocked.',
+        }],
+      };
+    }
+
+    case 'safety_deadman_switch': {
+      const updates: Record<string, unknown> = {};
+      if (args.enabled !== undefined) updates.enabled = args.enabled;
+      if (args.timeoutMs !== undefined) updates.timeoutMs = args.timeoutMs;
+      safety.updateDeadmanSwitch(updates);
+      const status = safety.getStatus();
+      return {
+        content: [{
+          type: 'text',
+          text: `Deadman switch ${status.deadmanSwitch.enabled ? 'ENABLED' : 'DISABLED'} (timeout: ${status.deadmanSwitch.timeoutMs}ms)`,
+        }],
+      };
+    }
+
+    case 'safety_heartbeat': {
+      safety.heartbeat();
+      return {
+        content: [{ type: 'text', text: 'Heartbeat received. Deadman switch timer reset.' }],
       };
     }
 

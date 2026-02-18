@@ -4,6 +4,7 @@ description: Safety policy tuned for TurtleBot3 in Gazebo simulation
 velocity:
   linearMax: 0.22    # TurtleBot3 Burger max is 0.22 m/s
   angularMax: 2.84   # TurtleBot3 Burger max is 2.84 rad/s
+  clampMode: true    # clamp to hardware max instead of blocking
 
 geofence:
   xMin: -10.0

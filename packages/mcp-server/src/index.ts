@@ -7,6 +7,9 @@
  * with velocity limits, geofence, rate limiting, e-stop, and audit logging.
  */
 
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -23,13 +26,67 @@ import { getActionTools, handleActionTool } from './tools/action-tools.js';
 import { getSafetyTools, handleSafetyTool } from './tools/safety-tools.js';
 import { getSystemTools, handleSystemTool } from './tools/system-tools.js';
 
-// Config from environment
-const BRIDGE_URL = process.env.PHYSICAL_MCP_BRIDGE_URL || 'ws://localhost:9090';
-const POLICY_PATH = process.env.PHYSICAL_MCP_POLICY || undefined;
+// --- CLI argument parsing ---
+function parseArgs(): { bridgeUrl: string; policyPath?: string; verbose: boolean } {
+  const args = process.argv.slice(2);
+
+  if (args.includes('--help') || args.includes('-h')) {
+    console.error(`
+PhysicalMCP - Safety-first MCP server for ROS2 robots
+
+Usage: physical-mcp [options]
+
+Options:
+  --bridge-url <url>   WebSocket URL for the ROS2 bridge (default: ws://localhost:9090)
+  --policy <path>      Path to a YAML safety policy file
+  --verbose            Enable verbose logging
+  --version            Show version number
+  --help               Show this help message
+
+Environment variables:
+  PHYSICAL_MCP_BRIDGE_URL   Same as --bridge-url
+  PHYSICAL_MCP_POLICY       Same as --policy
+`);
+    process.exit(0);
+  }
+
+  if (args.includes('--version') || args.includes('-v')) {
+    try {
+      const __dirname = dirname(fileURLToPath(import.meta.url));
+      const pkg = JSON.parse(readFileSync(resolve(__dirname, '../package.json'), 'utf-8'));
+      console.error(pkg.version);
+    } catch {
+      console.error('0.1.0');
+    }
+    process.exit(0);
+  }
+
+  let bridgeUrl = process.env.PHYSICAL_MCP_BRIDGE_URL || 'ws://localhost:9090';
+  let policyPath = process.env.PHYSICAL_MCP_POLICY || undefined;
+  let verbose = false;
+
+  for (let i = 0; i < args.length; i++) {
+    switch (args[i]) {
+      case '--bridge-url':
+        bridgeUrl = args[++i];
+        break;
+      case '--policy':
+        policyPath = args[++i];
+        break;
+      case '--verbose':
+        verbose = true;
+        break;
+    }
+  }
+
+  return { bridgeUrl, policyPath, verbose };
+}
+
+const config = parseArgs();
 
 // Core instances
-const connection = new ConnectionManager(BRIDGE_URL);
-const safety = new PolicyEngine(POLICY_PATH);
+const connection = new ConnectionManager(config.bridgeUrl);
+const safety = new PolicyEngine(config.policyPath);
 
 // MCP Server
 const server = new Server(
@@ -81,7 +138,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           return {
             content: [{
               type: 'text',
-              text: `Bridge not connected. Start the ROS2 bridge and try again.\nExpected bridge at: ${BRIDGE_URL}`,
+              text: `Bridge not connected. Start the ROS2 bridge and try again.\nExpected bridge at: ${config.bridgeUrl}\n\nTroubleshooting:\n- Docker: cd docker && docker compose up\n- Local: physical-mcp-bridge`,
             }],
             isError: true,
           };
@@ -138,9 +195,12 @@ async function main() {
   const transport = new StdioServerTransport();
 
   console.error('[PhysicalMCP] Starting safety-first MCP server for ROS2 v0.1.0');
-  console.error(`[PhysicalMCP] Bridge URL: ${BRIDGE_URL}`);
-  console.error(`[PhysicalMCP] Policy: ${POLICY_PATH || 'default'}`);
+  console.error(`[PhysicalMCP] Bridge URL: ${config.bridgeUrl}`);
+  console.error(`[PhysicalMCP] Policy: ${config.policyPath || 'default'}`);
   console.error(`[PhysicalMCP] Tools registered: ${allTools.length}`);
+  if (config.verbose) {
+    console.error('[PhysicalMCP] Verbose logging enabled');
+  }
 
   await server.connect(transport);
 }
