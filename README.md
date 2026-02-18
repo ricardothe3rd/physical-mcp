@@ -4,7 +4,7 @@
 [![npm version](https://img.shields.io/npm/v/@ricardothe3rd/physical-mcp)](https://www.npmjs.com/package/@ricardothe3rd/physical-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
-[![Tests](https://img.shields.io/badge/tests-196%20passing-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-396%20passing-brightgreen)](#testing)
 
 **Safety-first MCP server for ROS2 robots.** Bridge AI agents to physical systems with built-in velocity limits, geofence boundaries, emergency stop, rate limiting, and full audit logging.
 
@@ -18,7 +18,7 @@ npx @ricardothe3rd/physical-mcp
 - [What It Looks Like](#what-it-looks-like)
 - [Architecture](#architecture)
 - [Quick Start](#quick-start)
-- [MCP Tools (27)](#mcp-tools-27)
+- [MCP Tools (40)](#mcp-tools-40)
 - [Safety Layer](#safety-layer)
 - [Configuration](#configuration)
 - [Development](#development)
@@ -41,7 +41,15 @@ PhysicalMCP enforces a safety layer **before** any command reaches your robot:
 | Audit logging | Yes | No | No |
 | Blocked topics/services | Yes | No | No |
 | YAML policy configs | Yes | No | No |
-| ROS2 full coverage (topics/services/actions) | Yes | Yes | Partial |
+| Acceleration limits | Yes | No | No |
+| Per-topic velocity limits | Yes | No | No |
+| Command approval (human-in-loop) | Yes | No | No |
+| Safety score tracking | Yes | No | No |
+| Deadman switch | Yes | No | No |
+| Batch command execution | Yes | No | No |
+| Topic recording | Yes | No | No |
+| MCP tools | **40** | 8 | 5 |
+| ROS2 full coverage | Yes | Yes | Partial |
 
 ## What It Looks Like
 
@@ -182,9 +190,9 @@ Ask Claude things like:
 - "Show me the safety status"
 - "Activate emergency stop"
 
-## MCP Tools (27)
+## MCP Tools (40)
 
-### Topic Tools
+### Topic Tools (5)
 
 | Tool | Description |
 |------|-------------|
@@ -194,7 +202,7 @@ Ask Claude things like:
 | `ros2_topic_publish` | Publish a message to a topic *(safety checked)* |
 | `ros2_topic_echo` | Get the latest message from a topic |
 
-### Service Tools
+### Service Tools (3)
 
 | Tool | Description |
 |------|-------------|
@@ -202,7 +210,7 @@ Ask Claude things like:
 | `ros2_service_info` | Get service type information |
 | `ros2_service_call` | Call a ROS2 service *(safety checked)* |
 
-### Action Tools
+### Action Tools (4)
 
 | Tool | Description |
 |------|-------------|
@@ -211,7 +219,7 @@ Ask Claude things like:
 | `ros2_action_cancel` | Cancel a specific or all active goals |
 | `ros2_action_status` | Get status of active goals |
 
-### Safety Tools
+### Safety Tools (18)
 
 | Tool | Description |
 |------|-------------|
@@ -228,13 +236,31 @@ Ask Claude things like:
 | `safety_update_acceleration_limits` | Configure max acceleration/deceleration |
 | `safety_export_audit_log` | Export audit trail to JSON file |
 | `safety_check_position` | Check geofence compliance + proximity warnings |
+| `safety_validate_policy` | Validate policy configuration for errors/warnings |
+| `safety_approval_list` | List pending command approval requests |
+| `safety_approval_approve` | Approve a pending command (human-in-the-loop) |
+| `safety_approval_deny` | Deny a pending command execution |
+| `safety_approval_config` | Configure command approval settings |
 
-### System Tools
+### System Tools (6)
 
 | Tool | Description |
 |------|-------------|
 | `system_bridge_status` | Check bridge connection health + latency |
 | `system_node_list` | List all ROS2 nodes |
+| `system_node_info` | Get detailed info for a specific node |
+| `ros2_param_list` | List parameters for a node |
+| `ros2_param_get` | Get a parameter value |
+| `ros2_param_set` | Set a parameter value *(safety checked)* |
+
+### Batch & Recording Tools (4)
+
+| Tool | Description |
+|------|-------------|
+| `ros2_batch_execute` | Execute multiple commands in a single call |
+| `ros2_topic_record_start` | Start recording messages from a topic |
+| `ros2_topic_record_stop` | Stop recording and retrieve messages |
+| `ros2_topic_record_status` | Get status of all active recordings |
 
 ## Safety Layer
 
@@ -346,6 +372,49 @@ Dual-layer emergency stop:
 2. **Secondary (Python):** Bridge-level e-stop publishes zero velocity to `/cmd_vel` and cancels all active action goals
 
 Releasing requires explicit confirmation (`CONFIRM_RELEASE`) to prevent accidental resumption.
+
+### Per-Topic Velocity Limits
+
+Different speed limits for different robots or joints:
+
+```yaml
+topicVelocityOverrides:
+  - topic: /arm/cmd_vel
+    linearMax: 0.1        # Arm moves slowly
+    angularMax: 0.5
+  - topic: /base/cmd_vel
+    linearMax: 1.0        # Base can go faster
+```
+
+### Command Approval (Human-in-the-Loop)
+
+Require explicit human approval before executing dangerous commands:
+
+```yaml
+commandApproval:
+  enabled: true
+  requireApprovalFor:
+    - ros2_topic_publish
+    - ros2_action_send_goal
+  pendingTimeout: 30000   # 30s before approval expires
+```
+
+Use `safety_approval_list` to see pending requests, and `safety_approval_approve` or `safety_approval_deny` to resolve them.
+
+### Safety Score
+
+Track how "safe" an AI agent session has been:
+
+- **Score:** 0-100 (100 = all commands allowed, 0 = all blocked)
+- **Block rate:** Percentage of commands blocked
+- **Violations by type:** Breakdown of what went wrong
+- **Session duration:** How long the session has been running
+
+Check with `safety_status` — the `safetyScore` field shows the current snapshot.
+
+### Safety Events
+
+Subscribe to real-time safety events: violations, e-stop activations, policy changes. The event emitter provides both type-specific and catch-all listeners with automatic history.
 
 ### Audit Logging
 
