@@ -37,8 +37,8 @@ function detectChangedFields(a: SafetyPolicy, b: SafetyPolicy): string[] {
 
   const changed: string[] = [];
   for (const key of allKeys) {
-    const valA = (a as Record<string, unknown>)[key];
-    const valB = (b as Record<string, unknown>)[key];
+    const valA = (a as unknown as Record<string, unknown>)[key];
+    const valB = (b as unknown as Record<string, unknown>)[key];
     if (JSON.stringify(valA) !== JSON.stringify(valB)) {
       changed.push(key);
     }
@@ -116,8 +116,8 @@ export class PolicyVersionManager {
 
     return changedKeys.map((field) => ({
       field,
-      before: (entry1.policy as Record<string, unknown>)[field],
-      after: (entry2.policy as Record<string, unknown>)[field],
+      before: (entry1.policy as unknown as Record<string, unknown>)[field],
+      after: (entry2.policy as unknown as Record<string, unknown>)[field],
     }));
   }
 
