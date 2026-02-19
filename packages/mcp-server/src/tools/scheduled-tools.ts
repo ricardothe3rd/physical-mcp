@@ -140,7 +140,7 @@ export async function handleScheduledTool(
           job.executionCount++;
         }
 
-        if (!repeat || job.executionCount >= maxRepeats || job.status === 'cancelled') {
+        if (!repeat || job.executionCount >= maxRepeats || (job.status as string) === 'cancelled') {
           job.status = 'completed';
           if (job.timer) {
             clearInterval(job.timer as ReturnType<typeof setInterval>);
