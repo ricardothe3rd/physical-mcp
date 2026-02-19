@@ -1,26 +1,49 @@
 # Security Policy
 
+## Supported Versions
+
+| Version | Supported |
+| ------- | --------- |
+| 0.1.x   | Yes       |
+
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in PhysicalMCP, please report it responsibly:
+If you discover a security vulnerability in PhysicalMCP, please report it responsibly.
 
-1. **Do NOT** open a public GitHub issue
-2. Email the maintainer or use GitHub's private vulnerability reporting feature
-3. Include a description of the vulnerability and steps to reproduce
-4. Allow reasonable time for a fix before public disclosure
+**Do NOT open a public GitHub issue for security vulnerabilities.**
+
+Email: **security@chinchillaenterprises.com**
+
+Please include:
+
+- A description of the vulnerability
+- Steps to reproduce the issue
+- Potential impact assessment
+- Any suggested mitigations
+
+### Response Timeline
+
+- **48 hours** -- acknowledgment of your report
+- **7 days** -- plan for a fix communicated to you
+- **Coordinated disclosure** -- we will coordinate public disclosure after a fix is released
 
 ## Scope
 
-Security issues that are in scope:
+Security issues that are **in scope**:
 
-- **Safety layer bypasses** — any way to send commands to the robot without safety checks
-- **Emergency stop bypass** — any way to move the robot while e-stop is active
-- **Audit log tampering** — any way to modify or delete audit entries
-- **WebSocket injection** — unauthorized command injection via the bridge connection
-- **Policy loading vulnerabilities** — YAML parsing exploits or policy bypass
+- **MCP server** -- tool dispatch, input validation, command processing
+- **Safety layer** -- policy engine bypasses, e-stop circumvention, audit log tampering
+- **Bridge protocol** -- WebSocket injection, unauthorized command execution
+- **Docker images** -- container escape, privilege escalation
+
+Security issues that are **out of scope**:
+
+- **ROS2 itself** -- report upstream to Open Robotics
+- **Third-party dependencies** -- report upstream to the respective maintainers
+- **Physical access attacks** -- users with direct access to the ROS2 network
 
 ## Safety vs Security
 
-PhysicalMCP's safety layer is designed to prevent accidental damage from AI agents, not to resist adversarial attacks from users with system access. If someone has access to the ROS2 network directly, they can bypass the MCP server entirely. The safety layer is a guardrail, not a security boundary.
+PhysicalMCP's safety layer prevents accidental damage from AI agents, not adversarial attacks from users with system access. If someone has direct access to the ROS2 network, they can bypass the MCP server entirely. The safety layer is a guardrail, not a security boundary.
 
-That said, we take safety bypass bugs seriously — if the safety layer can be circumvented through the MCP interface, that's a bug we want to fix.
+That said, we take safety bypass bugs seriously. If the safety layer can be circumvented through the MCP interface, that is a bug we want to fix.
