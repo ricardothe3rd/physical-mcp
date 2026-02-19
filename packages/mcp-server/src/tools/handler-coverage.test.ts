@@ -16,6 +16,7 @@ import { handleTopicTool } from './topic-tools.js';
 import { handleServiceTool } from './service-tools.js';
 import { handleActionTool } from './action-tools.js';
 import { handleSystemTool } from './system-tools.js';
+import { handleParamTool } from './param-tools.js';
 import { handleBatchTool } from './batch-tools.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
 
@@ -370,13 +371,19 @@ describe('Action handler edge cases', () => {
 
 describe('System handler edge cases', () => {
   let connection: ReturnType<typeof createMockConnection>;
+  let safety: PolicyEngine;
 
   beforeEach(() => {
     connection = createMockConnection();
+    safety = new PolicyEngine();
+  });
+
+  afterEach(() => {
+    safety.destroy();
   });
 
   it('handleSystemTool with unknown tool name returns error', async () => {
-    const result = await handleSystemTool('system_nonexistent', {}, connection);
+    const result = await handleSystemTool('system_nonexistent', {}, connection, safety);
     expect(result.content[0].type).toBe('text');
     expect(result.content[0].text).toContain('Unknown system tool');
     expect(result.isError).toBe(true);
@@ -386,7 +393,7 @@ describe('System handler edge cases', () => {
     connection.isConnected = false;
     connection.isBridgeAvailable = false;
 
-    const result = await handleSystemTool('system_bridge_status', {}, connection);
+    const result = await handleSystemTool('system_bridge_status', {}, connection, safety);
     expect(result.content[0].type).toBe('text');
 
     const parsed = JSON.parse(result.content[0].text);
@@ -406,7 +413,7 @@ describe('System handler edge cases', () => {
       timestamp: Date.now(),
     });
 
-    const result = await handleSystemTool('system_bridge_status', {}, connection);
+    const result = await handleSystemTool('system_bridge_status', {}, connection, safety);
     expect(result.content[0].type).toBe('text');
 
     const parsed = JSON.parse(result.content[0].text);
@@ -421,7 +428,7 @@ describe('System handler edge cases', () => {
     connection.isBridgeAvailable = true;
     connection.send.mockRejectedValue(new Error('ping timeout'));
 
-    const result = await handleSystemTool('system_bridge_status', {}, connection);
+    const result = await handleSystemTool('system_bridge_status', {}, connection, safety);
     expect(result.content[0].type).toBe('text');
 
     const parsed = JSON.parse(result.content[0].text);
@@ -430,7 +437,7 @@ describe('System handler edge cases', () => {
     expect(result.isError).toBeUndefined();
   });
 
-  it('handleSystemTool("ros2_param_get") formats output correctly', async () => {
+  it('handleParamTool("ros2_param_get") formats output correctly', async () => {
     connection.send.mockResolvedValue({
       id: '1',
       status: 'ok',
@@ -438,10 +445,10 @@ describe('System handler edge cases', () => {
       timestamp: Date.now(),
     });
 
-    const result = await handleSystemTool('ros2_param_get', {
+    const result = await handleParamTool('ros2_param_get', {
       nodeName: '/my_node',
       paramName: 'speed',
-    }, connection);
+    }, connection, safety);
 
     expect(result.content[0].type).toBe('text');
     expect(result.content[0].text).toContain('/my_node/speed');
@@ -449,12 +456,12 @@ describe('System handler edge cases', () => {
     expect(result.isError).toBeUndefined();
   });
 
-  it('handleSystemTool("ros2_param_set") formats output correctly', async () => {
-    const result = await handleSystemTool('ros2_param_set', {
+  it('handleParamTool("ros2_param_set") formats output correctly', async () => {
+    const result = await handleParamTool('ros2_param_set', {
       nodeName: '/my_node',
       paramName: 'speed',
       value: 1.5,
-    }, connection);
+    }, connection, safety);
 
     expect(result.content[0].type).toBe('text');
     expect(result.content[0].text).toContain('Set /my_node/speed');
@@ -472,7 +479,7 @@ describe('System handler edge cases', () => {
 
     const result = await handleSystemTool('system_node_info', {
       nodeName: '/nonexistent_node',
-    }, connection);
+    }, connection, safety);
 
     expect(result.content[0].type).toBe('text');
     expect(result.content[0].text).toContain('Error');

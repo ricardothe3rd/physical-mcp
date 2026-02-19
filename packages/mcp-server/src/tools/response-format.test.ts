@@ -13,6 +13,7 @@ import { handleServiceTool } from './service-tools.js';
 import { handleActionTool } from './action-tools.js';
 import { handleSafetyTool } from './safety-tools.js';
 import { handleSystemTool } from './system-tools.js';
+import { handleParamTool } from './param-tools.js';
 import { handleBatchTool } from './batch-tools.js';
 import { handleRecordingTool, resetRecordingSessions } from './recording-tools.js';
 import { handleConditionalTool } from './conditional-tools.js';
@@ -617,92 +618,97 @@ describe('Response format consistency', () => {
   // =========================================================================
   describe('System tools', () => {
     it('system_bridge_status connected success', async () => {
-      const res = await handleSystemTool('system_bridge_status', {}, connection);
+      const res = await handleSystemTool('system_bridge_status', {}, connection, safety);
       assertSuccessResponse(res);
     });
 
     it('system_bridge_status disconnected', async () => {
       const disconnected = createMockConnection();
       disconnected.isConnected = false;
-      const res = await handleSystemTool('system_bridge_status', {}, disconnected);
+      const res = await handleSystemTool('system_bridge_status', {}, disconnected, safety);
       assertSuccessResponse(res);
       expect(res.content[0].text).toContain('false');
     });
 
     it('system_node_list success', async () => {
-      const res = await handleSystemTool('system_node_list', {}, connection);
+      const res = await handleSystemTool('system_node_list', {}, connection, safety);
       assertSuccessResponse(res);
     });
 
     it('system_node_list error from bridge', async () => {
-      const res = await handleSystemTool('system_node_list', {}, errorConnection);
+      const res = await handleSystemTool('system_node_list', {}, errorConnection, safety);
       assertErrorResponse(res);
     });
 
     it('system_node_info success', async () => {
       const res = await handleSystemTool('system_node_info', {
         nodeName: '/test_node',
-      }, connection);
+      }, connection, safety);
       assertSuccessResponse(res);
     });
 
     it('system_node_info error from bridge', async () => {
       const res = await handleSystemTool('system_node_info', {
         nodeName: '/test_node',
-      }, errorConnection);
-      assertErrorResponse(res);
-    });
-
-    it('ros2_param_list success', async () => {
-      const res = await handleSystemTool('ros2_param_list', {
-        nodeName: '/test_node',
-      }, connection);
-      assertSuccessResponse(res);
-    });
-
-    it('ros2_param_list error from bridge', async () => {
-      const res = await handleSystemTool('ros2_param_list', {
-        nodeName: '/test_node',
-      }, errorConnection);
-      assertErrorResponse(res);
-    });
-
-    it('ros2_param_get success', async () => {
-      const res = await handleSystemTool('ros2_param_get', {
-        nodeName: '/test_node',
-        paramName: 'speed',
-      }, connection);
-      assertSuccessResponse(res);
-    });
-
-    it('ros2_param_get error from bridge', async () => {
-      const res = await handleSystemTool('ros2_param_get', {
-        nodeName: '/test_node',
-        paramName: 'speed',
-      }, errorConnection);
-      assertErrorResponse(res);
-    });
-
-    it('ros2_param_set success', async () => {
-      const res = await handleSystemTool('ros2_param_set', {
-        nodeName: '/test_node',
-        paramName: 'speed',
-        value: 1.5,
-      }, connection);
-      assertSuccessResponse(res);
-    });
-
-    it('ros2_param_set error from bridge', async () => {
-      const res = await handleSystemTool('ros2_param_set', {
-        nodeName: '/test_node',
-        paramName: 'speed',
-        value: 1.5,
-      }, errorConnection);
+      }, errorConnection, safety);
       assertErrorResponse(res);
     });
 
     it('unknown system tool returns error', async () => {
-      const res = await handleSystemTool('system_unknown', {}, connection);
+      const res = await handleSystemTool('system_unknown', {}, connection, safety);
+      assertErrorResponse(res);
+    });
+  });
+
+  // =========================================================================
+  // Param Tools
+  // =========================================================================
+  describe('Param tools', () => {
+    it('ros2_param_list success', async () => {
+      const res = await handleParamTool('ros2_param_list', {
+        nodeName: '/test_node',
+      }, connection, safety);
+      assertSuccessResponse(res);
+    });
+
+    it('ros2_param_list error from bridge', async () => {
+      const res = await handleParamTool('ros2_param_list', {
+        nodeName: '/test_node',
+      }, errorConnection, safety);
+      assertErrorResponse(res);
+    });
+
+    it('ros2_param_get success', async () => {
+      const res = await handleParamTool('ros2_param_get', {
+        nodeName: '/test_node',
+        paramName: 'speed',
+      }, connection, safety);
+      assertSuccessResponse(res);
+    });
+
+    it('ros2_param_get error from bridge', async () => {
+      const res = await handleParamTool('ros2_param_get', {
+        nodeName: '/test_node',
+        paramName: 'speed',
+      }, errorConnection, safety);
+      assertErrorResponse(res);
+    });
+
+    it('ros2_param_set success', async () => {
+      const res = await handleParamTool('ros2_param_set', {
+        nodeName: '/test_node',
+        paramName: 'speed',
+        value: 1.5,
+      }, connection, safety);
+      assertSuccessResponse(res);
+    });
+
+    it('ros2_param_set error from bridge', async () => {
+      const res = await handleParamTool('ros2_param_set', {
+        nodeName: '/test_node',
+        paramName: 'speed',
+        value: 1.5,
+      }, errorConnection, safety);
       assertErrorResponse(res);
     });
   });
@@ -1197,7 +1203,12 @@ describe('Response format consistency', () => {
       {
         name: 'system',
         handler: handleSystemTool,
-        argsFactory: () => ['unknown_system_tool', {}, connection],
+        argsFactory: () => ['unknown_system_tool', {}, connection, safety],
+      },
+      {
+        name: 'param',
+        handler: handleParamTool,
+        argsFactory: () => ['unknown_param_tool', {}, connection, safety],
       },
       {
         name: 'batch',
@@ -1271,7 +1282,7 @@ describe('Response format consistency', () => {
     });
 
     it('system_node_list success has no isError', async () => {
-      const res = await handleSystemTool('system_node_list', {}, connection);
+      const res = await handleSystemTool('system_node_list', {}, connection, safety);
       expect(res.isError).toBeUndefined();
     });
 
