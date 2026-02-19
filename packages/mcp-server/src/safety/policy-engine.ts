@@ -40,6 +40,10 @@ export class PolicyEngine {
   private lastAngularRate = 0;
   private lastVelocityTime = 0;
 
+  /**
+   * Create a new PolicyEngine, loading a safety policy from disk.
+   * @param policyPath - Path to a JSON/YAML policy file. Uses the default policy if omitted.
+   */
   constructor(policyPath?: string) {
     this.policy = loadPolicy(policyPath);
     this.rateLimiter = new RateLimiter(this.policy.rateLimits);
@@ -392,7 +396,10 @@ export class PolicyEngine {
     return this.policy.blockedServices.some(s => service.startsWith(s));
   }
 
-  /** Activate emergency stop. Blocks all commands until released. */
+  /**
+   * Activate the emergency stop. All subsequent commands will be blocked
+   * until {@link releaseEmergencyStop} is called.
+   */
   activateEmergencyStop(): void {
     this.emergencyStopActive = true;
     console.error('[PolicyEngine] EMERGENCY STOP ACTIVATED');
@@ -400,7 +407,10 @@ export class PolicyEngine {
     this.eventEmitter.emit('emergency_stop_activated', {});
   }
 
-  /** Release emergency stop and allow commands to resume. */
+  /**
+   * Release the emergency stop, allowing commands to resume.
+   * Logs the release event and emits an `emergency_stop_released` event.
+   */
   releaseEmergencyStop(): void {
     this.emergencyStopActive = false;
     console.error('[PolicyEngine] Emergency stop released');
@@ -440,6 +450,11 @@ export class PolicyEngine {
     this.lastHeartbeat = Date.now();
   }
 
+  /**
+   * Update the deadman switch configuration at runtime.
+   * Automatically starts or stops the timer when `enabled` changes.
+   * @param config - Partial config to merge into the current deadman switch settings
+   */
   updateDeadmanSwitch(config: Partial<DeadmanSwitchConfig>): void {
     const wasEnabled = this.policy.deadmanSwitch.enabled;
     Object.assign(this.policy.deadmanSwitch, config);
@@ -452,35 +467,60 @@ export class PolicyEngine {
     }
   }
 
-  // Policy management
+  /** Return a shallow copy of the current safety policy. */
   getPolicy(): SafetyPolicy {
     return { ...this.policy };
   }
 
+  /**
+   * Update velocity limits at runtime (linear max, angular max, clamp mode).
+   * @param limits - Partial limits to merge into the current velocity settings
+   */
   updateVelocityLimits(limits: Partial<VelocityLimits>): void {
     Object.assign(this.policy.velocity, limits);
     console.error(`[PolicyEngine] Velocity limits updated: linear=${this.policy.velocity.linearMax}, angular=${this.policy.velocity.angularMax}, clamp=${this.policy.velocity.clampMode}`);
   }
 
+  /**
+   * Update acceleration limits at runtime.
+   * @param limits - Partial limits to merge into the current acceleration settings
+   */
   updateAccelerationLimits(limits: Partial<AccelerationLimits>): void {
     Object.assign(this.policy.acceleration, limits);
     console.error(`[PolicyEngine] Acceleration limits updated: linear=${this.policy.acceleration.linearMaxAccel}, angular=${this.policy.acceleration.angularMaxAccel}, enabled=${this.policy.acceleration.enabled}`);
   }
 
+  /**
+   * Update geofence boundaries at runtime.
+   * @param bounds - Partial bounds to merge into the current geofence
+   */
   updateGeofence(bounds: Partial<GeofenceBounds>): void {
     Object.assign(this.policy.geofence, bounds);
     console.error(`[PolicyEngine] Geofence updated`);
   }
 
-  // Audit
+  /**
+   * Retrieve audit log entries, optionally filtered.
+   * @param options.limit - Max number of entries to return (newest first)
+   * @param options.command - Filter by command type (e.g., "publish", "service_call")
+   * @param options.violationsOnly - If true, return only blocked commands
+   * @returns Array of audit entries, newest first
+   */
   getAuditLog(options?: { limit?: number; command?: string; violationsOnly?: boolean }) {
     return this.auditLogger.getEntries(options);
   }
 
+  /** Return aggregate audit statistics (total, allowed, blocked, errors). */
   getAuditStats() {
     return this.auditLogger.getStats();
   }
 
+  /**
+   * Export the audit log to a JSON file on disk.
+   * @param filePath - Destination file path
+   * @param options - Optional filters (violationsOnly, command type)
+   * @returns The number of entries exported
+   */
   exportAuditLog(filePath: string, options?: { violationsOnly?: boolean; command?: string }): number {
     return this.auditLogger.exportToFile(filePath, options);
   }
@@ -498,6 +538,11 @@ export class PolicyEngine {
     };
   }
 
+  /**
+   * Return a comprehensive snapshot of the engine's current state, including
+   * e-stop status, velocity/acceleration limits, geofence, rate limiter stats,
+   * safety score, deadman switch, and time policy information.
+   */
   getStatus() {
     return {
       policyName: this.policy.name,
@@ -535,25 +580,28 @@ export class PolicyEngine {
     return this.eventEmitter;
   }
 
-  // Violation mode
+  /** Get the current violation handling mode (e.g., "block", "warn", "log_only"). */
   getViolationMode(): ViolationMode {
     return this.violationMode.getMode();
   }
 
+  /** Set the violation handling mode, controlling whether violations block, warn, or are log-only. */
   setViolationMode(mode: ViolationMode): void {
     this.violationMode.setMode(mode);
     console.error(`[PolicyEngine] Violation mode set to: ${mode}`);
   }
 
+  /** Get statistics on how violations have been handled in the current mode. */
   getViolationModeStats() {
     return this.violationMode.getStats();
   }
 
-  // Time-based policies
+  /** Get the current time-based policy configuration. */
   getTimePolicyConfig(): TimePolicyConfig {
     return this.timePolicyConfig;
   }
 
+  /** Set the time-based policy configuration (enables/disables scheduled policy overrides). */
   setTimePolicyConfig(config: TimePolicyConfig): void {
     this.timePolicyConfig = config;
     console.error(`[PolicyEngine] Time policy ${config.enabled ? 'enabled' : 'disabled'} (${config.schedules.length} schedules)`);
@@ -567,6 +615,7 @@ export class PolicyEngine {
     return applyTimePolicy(this.policy, this.timePolicyConfig, now);
   }
 
+  /** Clean up timers (deadman switch). Call when the engine is no longer needed. */
   destroy(): void {
     this.stopDeadmanSwitch();
   }
