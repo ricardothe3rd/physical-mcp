@@ -33,6 +33,8 @@ import { getScheduledTools, handleScheduledTool } from './tools/scheduled-tools.
 import { getTfTools, handleTfTool } from './tools/tf-tools.js';
 import { getDiagnosticTools, handleDiagnosticTool } from './tools/diagnostic-tools.js';
 import { getFleetTools, handleFleetTool } from './tools/fleet-tools.js';
+import { getLaunchTools, handleLaunchTool } from './tools/launch-tools.js';
+import { getWaypointTools, handleWaypointTool } from './tools/waypoint-tools.js';
 
 // --- CLI argument parsing ---
 function parseArgs(): { bridgeUrl: string; policyPath?: string; verbose: boolean } {
@@ -130,6 +132,8 @@ const allTools = [
   ...getTfTools(),
   ...getDiagnosticTools(),
   ...getFleetTools(),
+  ...getLaunchTools(),
+  ...getWaypointTools(),
 ];
 
 // Tool name -> category mapping for dispatch
@@ -145,6 +149,8 @@ const scheduledToolNames = new Set(getScheduledTools().map(t => t.name));
 const tfToolNames = new Set(getTfTools().map(t => t.name));
 const diagnosticToolNames = new Set(getDiagnosticTools().map(t => t.name));
 const fleetToolNames = new Set(getFleetTools().map(t => t.name));
+const launchToolNames = new Set(getLaunchTools().map(t => t.name));
+const waypointToolNames = new Set(getWaypointTools().map(t => t.name));
 
 // List tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -211,6 +217,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
     if (fleetToolNames.has(name)) {
       return await handleFleetTool(name, toolArgs, connection);
+    }
+    if (launchToolNames.has(name)) {
+      return await handleLaunchTool(name, toolArgs, connection);
+    }
+    if (waypointToolNames.has(name)) {
+      return await handleWaypointTool(name, toolArgs, connection, safety);
     }
 
     return {

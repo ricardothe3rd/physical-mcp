@@ -15,6 +15,8 @@ import { getScheduledTools } from './scheduled-tools.js';
 import { getTfTools } from './tf-tools.js';
 import { getDiagnosticTools } from './diagnostic-tools.js';
 import { getFleetTools } from './fleet-tools.js';
+import { getLaunchTools } from './launch-tools.js';
+import { getWaypointTools } from './waypoint-tools.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
 
 // Create a simple mock object instead of mocking the module
@@ -93,6 +95,8 @@ describe('Tool Definitions', () => {
       ...getTfTools(),
       ...getDiagnosticTools(),
       ...getFleetTools(),
+      ...getLaunchTools(),
+      ...getWaypointTools(),
     ];
     const names = allTools.map(t => t.name);
     const uniqueNames = new Set(names);
@@ -113,6 +117,8 @@ describe('Tool Definitions', () => {
       ...getTfTools(),
       ...getDiagnosticTools(),
       ...getFleetTools(),
+      ...getLaunchTools(),
+      ...getWaypointTools(),
     ];
     for (const tool of allTools) {
       expect(tool.description).toBeTruthy();
@@ -134,6 +140,8 @@ describe('Tool Definitions', () => {
       ...getTfTools(),
       ...getDiagnosticTools(),
       ...getFleetTools(),
+      ...getLaunchTools(),
+      ...getWaypointTools(),
     ];
     for (const tool of allTools) {
       expect(tool.inputSchema).toBeDefined();
@@ -178,7 +186,24 @@ describe('Tool Definitions', () => {
     expect(tools.map(t => t.name)).toContain('ros2_fleet_remove');
   });
 
-  it('total tool count is 55', () => {
+  it('launch tools have correct count', () => {
+    const tools = getLaunchTools();
+    expect(tools.length).toBe(3);
+    expect(tools.map(t => t.name)).toContain('ros2_launch_start');
+    expect(tools.map(t => t.name)).toContain('ros2_launch_stop');
+    expect(tools.map(t => t.name)).toContain('ros2_launch_status');
+  });
+
+  it('waypoint tools have correct count', () => {
+    const tools = getWaypointTools();
+    expect(tools.length).toBe(4);
+    expect(tools.map(t => t.name)).toContain('ros2_waypoint_save');
+    expect(tools.map(t => t.name)).toContain('ros2_waypoint_list');
+    expect(tools.map(t => t.name)).toContain('ros2_waypoint_delete');
+    expect(tools.map(t => t.name)).toContain('ros2_waypoint_navigate');
+  });
+
+  it('total tool count is 62', () => {
     const total =
       getTopicTools().length +
       getServiceTools().length +
@@ -191,8 +216,10 @@ describe('Tool Definitions', () => {
       getScheduledTools().length +
       getTfTools().length +
       getDiagnosticTools().length +
-      getFleetTools().length;
-    expect(total).toBe(55);
+      getFleetTools().length +
+      getLaunchTools().length +
+      getWaypointTools().length;
+    expect(total).toBe(62);
   });
 });
 

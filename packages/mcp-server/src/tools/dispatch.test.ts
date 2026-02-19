@@ -20,6 +20,8 @@ import { getScheduledTools } from './scheduled-tools.js';
 import { getTfTools } from './tf-tools.js';
 import { getDiagnosticTools } from './diagnostic-tools.js';
 import { getFleetTools } from './fleet-tools.js';
+import { getLaunchTools } from './launch-tools.js';
+import { getWaypointTools } from './waypoint-tools.js';
 
 // Mirrors the dispatch sets built in index.ts
 const topicToolNames = new Set(getTopicTools().map(t => t.name));
@@ -34,6 +36,8 @@ const scheduledToolNames = new Set(getScheduledTools().map(t => t.name));
 const tfToolNames = new Set(getTfTools().map(t => t.name));
 const diagnosticToolNames = new Set(getDiagnosticTools().map(t => t.name));
 const fleetToolNames = new Set(getFleetTools().map(t => t.name));
+const launchToolNames = new Set(getLaunchTools().map(t => t.name));
+const waypointToolNames = new Set(getWaypointTools().map(t => t.name));
 
 // All category sets in dispatch order (same order as index.ts)
 const categorySets = [
@@ -49,6 +53,8 @@ const categorySets = [
   { name: 'tf', set: tfToolNames },
   { name: 'diagnostic', set: diagnosticToolNames },
   { name: 'fleet', set: fleetToolNames },
+  { name: 'launch', set: launchToolNames },
+  { name: 'waypoint', set: waypointToolNames },
 ];
 
 /**
@@ -68,6 +74,8 @@ function dispatchCategory(toolName: string): string | null {
   if (tfToolNames.has(toolName)) return 'tf';
   if (diagnosticToolNames.has(toolName)) return 'diagnostic';
   if (fleetToolNames.has(toolName)) return 'fleet';
+  if (launchToolNames.has(toolName)) return 'launch';
+  if (waypointToolNames.has(toolName)) return 'waypoint';
   return null;
 }
 
@@ -297,6 +305,8 @@ describe('Tool Dispatch Routing', () => {
           tf: getTfTools,
           diagnostic: getDiagnosticTools,
           fleet: getFleetTools,
+          launch: getLaunchTools,
+          waypoint: getWaypointTools,
         }[name]!;
 
         const tools = getter();
@@ -306,12 +316,12 @@ describe('Tool Dispatch Routing', () => {
   });
 
   describe('total tool count', () => {
-    it('all categories sum to 48 tools', () => {
+    it('all categories sum to 62 tools', () => {
       let total = 0;
       for (const { set } of categorySets) {
         total += set.size;
       }
-      expect(total).toBe(55);
+      expect(total).toBe(62);
     });
 
     it('matches the count of all tools combined', () => {
@@ -328,12 +338,14 @@ describe('Tool Dispatch Routing', () => {
         ...getTfTools(),
         ...getDiagnosticTools(),
         ...getFleetTools(),
+        ...getLaunchTools(),
+        ...getWaypointTools(),
       ];
-      expect(allTools.length).toBe(55);
+      expect(allTools.length).toBe(62);
     });
 
-    it('12 categories exist', () => {
-      expect(categorySets.length).toBe(12);
+    it('14 categories exist', () => {
+      expect(categorySets.length).toBe(14);
     });
   });
 
@@ -351,6 +363,8 @@ describe('Tool Dispatch Routing', () => {
       ...getTfTools(),
       ...getDiagnosticTools(),
       ...getFleetTools(),
+      ...getLaunchTools(),
+      ...getWaypointTools(),
     ];
 
     it.each(allTools.map(t => t.name))('%s dispatches to a category', (name) => {
