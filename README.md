@@ -18,6 +18,7 @@ npx @ricardothe3rd/physical-mcp
 - [What It Looks Like](#what-it-looks-like)
 - [Architecture](#architecture)
 - [Quick Start](#quick-start)
+- [What It Looks Like (Quick Examples)](#what-it-looks-like-quick-examples)
 - [What It Looks Like In Practice](#what-it-looks-like-in-practice)
 - [MCP Tools (40)](#mcp-tools-40)
 - [Safety Layer](#safety-layer)
@@ -192,6 +193,41 @@ Ask Claude things like:
 - "Move the robot forward at 0.1 m/s"
 - "Show me the safety status"
 - "Activate emergency stop"
+
+## What It Looks Like (Quick Examples)
+
+### Listing Topics
+```
+> ros2_topic_list
+
+Topics found:
+  /cmd_vel          - geometry_msgs/msg/Twist
+  /odom             - nav_msgs/msg/Odometry
+  /scan             - sensor_msgs/msg/LaserScan
+  /camera/image_raw - sensor_msgs/msg/Image
+  /tf               - tf2_msgs/msg/TFMessage
+```
+
+### Safety Blocking a Dangerous Command
+```
+> ros2_topic_publish topic=/cmd_vel message={linear: {x: 10.0}}
+
+SAFETY VIOLATION: Velocity limit exceeded
+  Linear velocity: 10.0 m/s exceeds max 0.5 m/s
+  Action: BLOCKED
+  Suggestion: Reduce linear.x to 0.5 or below
+```
+
+### Emergency Stop
+```
+> safety_emergency_stop reason="Testing e-stop"
+
+Emergency stop ACTIVATED
+  All motion commands blocked
+  Zero velocity published to /cmd_vel
+  Reason: Testing e-stop
+  Release with: safety_emergency_stop_release
+```
 
 ## What It Looks Like In Practice
 
@@ -763,6 +799,36 @@ nvm use 18
 ### Rate limit errors during normal use
 
 The default policy limits publishes to 10 Hz. If you're sending commands faster than that (e.g., in a control loop), either increase the limit in your policy YAML or use the `safety_update_velocity_limits` tool.
+
+### Bridge Connection Refused
+**Error:** `WebSocket connection failed: ECONNREFUSED`
+- Ensure the ROS2 bridge is running: `docker compose up bridge`
+- Check the bridge URL matches: default is `ws://localhost:9090`
+- Verify no firewall blocking port 9090
+
+### Docker: Gazebo Display Issues
+**Error:** `cannot open display` or blank Gazebo window
+- Set `DISPLAY` env var: `export DISPLAY=:0`
+- On macOS, install XQuartz and run `xhost +localhost`
+- For headless mode, set `GAZEBO_HEADLESS=1`
+
+### Safety Policy Not Loading
+**Error:** `Failed to load policy file`
+- Check the YAML syntax: `npx yaml-lint policies/default.yaml`
+- Ensure the file path is absolute or relative to the server working directory
+- Verify the policy structure matches the schema (see Safety Policy Guide)
+
+### E-Stop Won't Release
+**Behavior:** `safety_emergency_stop_release` returns error
+- E-stop release requires explicit confirmation: pass `confirm: true`
+- If bridge-level e-stop is active, restart the bridge container
+- Check audit log for the original e-stop trigger: `safety_audit_log`
+
+### High Latency Commands
+**Behavior:** Commands take >1 second
+- Check bridge connection: `system_bridge_status`
+- Verify Docker is not resource-starved: `docker stats`
+- Reduce rate limiter windows if they're too restrictive
 
 ## Contributing
 
