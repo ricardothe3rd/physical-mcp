@@ -1,0 +1,47 @@
+# Auto-label PRs based on file paths
+# Requires: actions/labeler@v5 in CI workflow
+
+safety:
+  - changed-files:
+    - any-glob-to-any-file: 'packages/mcp-server/src/safety/**'
+
+tools:
+  - changed-files:
+    - any-glob-to-any-file: 'packages/mcp-server/src/tools/**'
+
+bridge:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'packages/mcp-server/src/bridge/**'
+      - 'packages/ros2-bridge/**'
+
+python:
+  - changed-files:
+    - any-glob-to-any-file: 'packages/ros2-bridge/**'
+
+typescript:
+  - changed-files:
+    - any-glob-to-any-file: 'packages/mcp-server/src/**'
+
+tests:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/*.test.ts'
+      - '**/tests/**'
+
+docs:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '*.md'
+      - 'resources/docs/**'
+
+ci:
+  - changed-files:
+    - any-glob-to-any-file: '.github/**'
+
+docker:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'docker/**'
+      - 'Dockerfile*'
+      - 'docker-compose*.yml'
