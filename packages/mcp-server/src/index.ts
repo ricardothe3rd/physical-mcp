@@ -35,6 +35,9 @@ import { getDiagnosticTools, handleDiagnosticTool } from './tools/diagnostic-too
 import { getFleetTools, handleFleetTool } from './tools/fleet-tools.js';
 import { getLaunchTools, handleLaunchTool } from './tools/launch-tools.js';
 import { getWaypointTools, handleWaypointTool } from './tools/waypoint-tools.js';
+import { getIntrospectionTools, handleIntrospectionTool } from './tools/introspection-tools.js';
+import { getNamespaceTools, handleNamespaceTool } from './tools/namespace-tools.js';
+import { getSensorTools, handleSensorTool } from './tools/sensor-tools.js';
 
 // --- CLI argument parsing ---
 function parseArgs(): { bridgeUrl: string; policyPath?: string; verbose: boolean } {
@@ -134,6 +137,9 @@ const allTools = [
   ...getFleetTools(),
   ...getLaunchTools(),
   ...getWaypointTools(),
+  ...getIntrospectionTools(),
+  ...getNamespaceTools(),
+  ...getSensorTools(),
 ];
 
 // Tool name -> category mapping for dispatch
@@ -151,6 +157,9 @@ const diagnosticToolNames = new Set(getDiagnosticTools().map(t => t.name));
 const fleetToolNames = new Set(getFleetTools().map(t => t.name));
 const launchToolNames = new Set(getLaunchTools().map(t => t.name));
 const waypointToolNames = new Set(getWaypointTools().map(t => t.name));
+const introspectionToolNames = new Set(getIntrospectionTools().map(t => t.name));
+const namespaceToolNames = new Set(getNamespaceTools().map(t => t.name));
+const sensorToolNames = new Set(getSensorTools().map(t => t.name));
 
 // List tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -223,6 +232,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
     if (waypointToolNames.has(name)) {
       return await handleWaypointTool(name, toolArgs, connection, safety);
+    }
+    if (introspectionToolNames.has(name)) {
+      return await handleIntrospectionTool(name, toolArgs, connection);
+    }
+    if (namespaceToolNames.has(name)) {
+      return await handleNamespaceTool(name, toolArgs, connection);
+    }
+    if (sensorToolNames.has(name)) {
+      return await handleSensorTool(name, toolArgs, connection);
     }
 
     return {

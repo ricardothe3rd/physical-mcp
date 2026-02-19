@@ -22,6 +22,9 @@ import { getDiagnosticTools } from './diagnostic-tools.js';
 import { getFleetTools } from './fleet-tools.js';
 import { getLaunchTools } from './launch-tools.js';
 import { getWaypointTools } from './waypoint-tools.js';
+import { getIntrospectionTools } from './introspection-tools.js';
+import { getNamespaceTools } from './namespace-tools.js';
+import { getSensorTools } from './sensor-tools.js';
 
 // Mirrors the dispatch sets built in index.ts
 const topicToolNames = new Set(getTopicTools().map(t => t.name));
@@ -38,6 +41,9 @@ const diagnosticToolNames = new Set(getDiagnosticTools().map(t => t.name));
 const fleetToolNames = new Set(getFleetTools().map(t => t.name));
 const launchToolNames = new Set(getLaunchTools().map(t => t.name));
 const waypointToolNames = new Set(getWaypointTools().map(t => t.name));
+const introspectionToolNames = new Set(getIntrospectionTools().map(t => t.name));
+const namespaceToolNames = new Set(getNamespaceTools().map(t => t.name));
+const sensorToolNames = new Set(getSensorTools().map(t => t.name));
 
 // All category sets in dispatch order (same order as index.ts)
 const categorySets = [
@@ -55,6 +61,9 @@ const categorySets = [
   { name: 'fleet', set: fleetToolNames },
   { name: 'launch', set: launchToolNames },
   { name: 'waypoint', set: waypointToolNames },
+  { name: 'introspection', set: introspectionToolNames },
+  { name: 'namespace', set: namespaceToolNames },
+  { name: 'sensor', set: sensorToolNames },
 ];
 
 /**
@@ -76,6 +85,9 @@ function dispatchCategory(toolName: string): string | null {
   if (fleetToolNames.has(toolName)) return 'fleet';
   if (launchToolNames.has(toolName)) return 'launch';
   if (waypointToolNames.has(toolName)) return 'waypoint';
+  if (introspectionToolNames.has(toolName)) return 'introspection';
+  if (namespaceToolNames.has(toolName)) return 'namespace';
+  if (sensorToolNames.has(toolName)) return 'sensor';
   return null;
 }
 
@@ -243,6 +255,53 @@ describe('Tool Dispatch Routing', () => {
     });
   });
 
+  describe('introspection tools map to introspection handler', () => {
+    const expected = [
+      'ros2_msg_type_info',
+      'ros2_srv_type_info',
+      'ros2_action_type_info',
+    ];
+
+    it.each(expected)('%s dispatches to introspection', (name) => {
+      expect(dispatchCategory(name)).toBe('introspection');
+    });
+
+    it('introspection set contains exactly 3 tools', () => {
+      expect(introspectionToolNames.size).toBe(3);
+    });
+  });
+
+  describe('namespace tools map to namespace handler', () => {
+    const expected = [
+      'ros2_namespace_list',
+      'ros2_namespace_remap',
+      'ros2_namespace_clear_remaps',
+    ];
+
+    it.each(expected)('%s dispatches to namespace', (name) => {
+      expect(dispatchCategory(name)).toBe('namespace');
+    });
+
+    it('namespace set contains exactly 3 tools', () => {
+      expect(namespaceToolNames.size).toBe(3);
+    });
+  });
+
+  describe('sensor tools map to sensor handler', () => {
+    const expected = [
+      'ros2_sensor_summary',
+      'ros2_sensor_read',
+    ];
+
+    it.each(expected)('%s dispatches to sensor', (name) => {
+      expect(dispatchCategory(name)).toBe('sensor');
+    });
+
+    it('sensor set contains exactly 2 tools', () => {
+      expect(sensorToolNames.size).toBe(2);
+    });
+  });
+
   describe('unknown tool names', () => {
     it('returns null for completely unknown tool', () => {
       expect(dispatchCategory('nonexistent_tool')).toBeNull();
@@ -307,6 +366,9 @@ describe('Tool Dispatch Routing', () => {
           fleet: getFleetTools,
           launch: getLaunchTools,
           waypoint: getWaypointTools,
+          introspection: getIntrospectionTools,
+          namespace: getNamespaceTools,
+          sensor: getSensorTools,
         }[name]!;
 
         const tools = getter();
@@ -316,12 +378,12 @@ describe('Tool Dispatch Routing', () => {
   });
 
   describe('total tool count', () => {
-    it('all categories sum to 62 tools', () => {
+    it('all categories sum to 70 tools', () => {
       let total = 0;
       for (const { set } of categorySets) {
         total += set.size;
       }
-      expect(total).toBe(62);
+      expect(total).toBe(70);
     });
 
     it('matches the count of all tools combined', () => {
@@ -340,12 +402,15 @@ describe('Tool Dispatch Routing', () => {
         ...getFleetTools(),
         ...getLaunchTools(),
         ...getWaypointTools(),
+        ...getIntrospectionTools(),
+        ...getNamespaceTools(),
+        ...getSensorTools(),
       ];
-      expect(allTools.length).toBe(62);
+      expect(allTools.length).toBe(70);
     });
 
-    it('14 categories exist', () => {
-      expect(categorySets.length).toBe(14);
+    it('17 categories exist', () => {
+      expect(categorySets.length).toBe(17);
     });
   });
 
@@ -365,6 +430,9 @@ describe('Tool Dispatch Routing', () => {
       ...getFleetTools(),
       ...getLaunchTools(),
       ...getWaypointTools(),
+      ...getIntrospectionTools(),
+      ...getNamespaceTools(),
+      ...getSensorTools(),
     ];
 
     it.each(allTools.map(t => t.name))('%s dispatches to a category', (name) => {

@@ -17,6 +17,9 @@ import { getDiagnosticTools } from './diagnostic-tools.js';
 import { getFleetTools } from './fleet-tools.js';
 import { getLaunchTools } from './launch-tools.js';
 import { getWaypointTools } from './waypoint-tools.js';
+import { getIntrospectionTools } from './introspection-tools.js';
+import { getNamespaceTools } from './namespace-tools.js';
+import { getSensorTools } from './sensor-tools.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
 
 // Create a simple mock object instead of mocking the module
@@ -97,6 +100,9 @@ describe('Tool Definitions', () => {
       ...getFleetTools(),
       ...getLaunchTools(),
       ...getWaypointTools(),
+      ...getIntrospectionTools(),
+      ...getNamespaceTools(),
+      ...getSensorTools(),
     ];
     const names = allTools.map(t => t.name);
     const uniqueNames = new Set(names);
@@ -119,6 +125,9 @@ describe('Tool Definitions', () => {
       ...getFleetTools(),
       ...getLaunchTools(),
       ...getWaypointTools(),
+      ...getIntrospectionTools(),
+      ...getNamespaceTools(),
+      ...getSensorTools(),
     ];
     for (const tool of allTools) {
       expect(tool.description).toBeTruthy();
@@ -142,6 +151,9 @@ describe('Tool Definitions', () => {
       ...getFleetTools(),
       ...getLaunchTools(),
       ...getWaypointTools(),
+      ...getIntrospectionTools(),
+      ...getNamespaceTools(),
+      ...getSensorTools(),
     ];
     for (const tool of allTools) {
       expect(tool.inputSchema).toBeDefined();
@@ -203,7 +215,30 @@ describe('Tool Definitions', () => {
     expect(tools.map(t => t.name)).toContain('ros2_waypoint_navigate');
   });
 
-  it('total tool count is 62', () => {
+  it('introspection tools have correct count', () => {
+    const tools = getIntrospectionTools();
+    expect(tools.length).toBe(3);
+    expect(tools.map(t => t.name)).toContain('ros2_msg_type_info');
+    expect(tools.map(t => t.name)).toContain('ros2_srv_type_info');
+    expect(tools.map(t => t.name)).toContain('ros2_action_type_info');
+  });
+
+  it('namespace tools have correct count', () => {
+    const tools = getNamespaceTools();
+    expect(tools.length).toBe(3);
+    expect(tools.map(t => t.name)).toContain('ros2_namespace_list');
+    expect(tools.map(t => t.name)).toContain('ros2_namespace_remap');
+    expect(tools.map(t => t.name)).toContain('ros2_namespace_clear_remaps');
+  });
+
+  it('sensor tools have correct count', () => {
+    const tools = getSensorTools();
+    expect(tools.length).toBe(2);
+    expect(tools.map(t => t.name)).toContain('ros2_sensor_summary');
+    expect(tools.map(t => t.name)).toContain('ros2_sensor_read');
+  });
+
+  it('total tool count is 70', () => {
     const total =
       getTopicTools().length +
       getServiceTools().length +
@@ -218,8 +253,11 @@ describe('Tool Definitions', () => {
       getDiagnosticTools().length +
       getFleetTools().length +
       getLaunchTools().length +
-      getWaypointTools().length;
-    expect(total).toBe(62);
+      getWaypointTools().length +
+      getIntrospectionTools().length +
+      getNamespaceTools().length +
+      getSensorTools().length;
+    expect(total).toBe(70);
   });
 });
 
