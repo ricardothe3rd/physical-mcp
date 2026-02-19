@@ -41,6 +41,9 @@ import { getSensorTools, handleSensorTool } from './tools/sensor-tools.js';
 import { getPowerTools, handlePowerTool } from './tools/power-tools.js';
 import { getParamTools, handleParamTool } from './tools/param-tools.js';
 import { getDescriptionTools, handleDescriptionTool } from './tools/description-tools.js';
+import { getCameraTools, handleCameraTool } from './tools/camera-tools.js';
+import { getMapTools, handleMapTool } from './tools/map-tools.js';
+import { getHistoryTools, handleHistoryTool } from './tools/history-tools.js';
 
 // --- CLI argument parsing ---
 function parseArgs(): { bridgeUrl: string; policyPath?: string; verbose: boolean } {
@@ -146,6 +149,9 @@ const allTools = [
   ...getPowerTools(),
   ...getParamTools(),
   ...getDescriptionTools(),
+  ...getCameraTools(),
+  ...getMapTools(),
+  ...getHistoryTools(),
 ];
 
 // Tool name -> category mapping for dispatch
@@ -169,6 +175,9 @@ const sensorToolNames = new Set(getSensorTools().map(t => t.name));
 const powerToolNames = new Set(getPowerTools().map(t => t.name));
 const paramToolNames = new Set(getParamTools().map(t => t.name));
 const descriptionToolNames = new Set(getDescriptionTools().map(t => t.name));
+const cameraToolNames = new Set(getCameraTools().map(t => t.name));
+const mapToolNames = new Set(getMapTools().map(t => t.name));
+const historyToolNames = new Set(getHistoryTools().map(t => t.name));
 
 // List tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -259,6 +268,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
     if (descriptionToolNames.has(name)) {
       return await handleDescriptionTool(name, toolArgs, connection);
+    }
+    if (cameraToolNames.has(name)) {
+      return await handleCameraTool(name, toolArgs, connection);
+    }
+    if (mapToolNames.has(name)) {
+      return await handleMapTool(name, toolArgs, connection);
+    }
+    if (historyToolNames.has(name)) {
+      return await handleHistoryTool(name, toolArgs);
     }
 
     return {
