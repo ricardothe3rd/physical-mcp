@@ -106,7 +106,7 @@ export async function handleConditionalTool(
       let message: unknown;
       try {
         const response = await connection.send(CommandType.TOPIC_ECHO, { topic });
-        message = response.data?.message ?? response.data;
+        message = (response.data as Record<string, unknown>)?.message ?? response.data;
       } catch (err) {
         return {
           content: [{ type: 'text', text: `Failed to read topic "${topic}": ${err instanceof Error ? err.message : err}` }],
@@ -187,7 +187,7 @@ export async function handleConditionalTool(
         attempts++;
         try {
           const response = await connection.send(CommandType.TOPIC_ECHO, { topic });
-          const message = response.data?.message ?? response.data;
+          const message = (response.data as Record<string, unknown>)?.message ?? response.data;
           lastValue = extractField(message, field);
 
           if (evaluateCondition(lastValue, operator, value)) {
