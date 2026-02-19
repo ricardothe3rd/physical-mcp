@@ -38,6 +38,9 @@ import { getWaypointTools, handleWaypointTool } from './tools/waypoint-tools.js'
 import { getIntrospectionTools, handleIntrospectionTool } from './tools/introspection-tools.js';
 import { getNamespaceTools, handleNamespaceTool } from './tools/namespace-tools.js';
 import { getSensorTools, handleSensorTool } from './tools/sensor-tools.js';
+import { getPowerTools, handlePowerTool } from './tools/power-tools.js';
+import { getParamTools, handleParamTool } from './tools/param-tools.js';
+import { getDescriptionTools, handleDescriptionTool } from './tools/description-tools.js';
 
 // --- CLI argument parsing ---
 function parseArgs(): { bridgeUrl: string; policyPath?: string; verbose: boolean } {
@@ -140,6 +143,9 @@ const allTools = [
   ...getIntrospectionTools(),
   ...getNamespaceTools(),
   ...getSensorTools(),
+  ...getPowerTools(),
+  ...getParamTools(),
+  ...getDescriptionTools(),
 ];
 
 // Tool name -> category mapping for dispatch
@@ -160,6 +166,9 @@ const waypointToolNames = new Set(getWaypointTools().map(t => t.name));
 const introspectionToolNames = new Set(getIntrospectionTools().map(t => t.name));
 const namespaceToolNames = new Set(getNamespaceTools().map(t => t.name));
 const sensorToolNames = new Set(getSensorTools().map(t => t.name));
+const powerToolNames = new Set(getPowerTools().map(t => t.name));
+const paramToolNames = new Set(getParamTools().map(t => t.name));
+const descriptionToolNames = new Set(getDescriptionTools().map(t => t.name));
 
 // List tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -204,7 +213,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       return await handleSafetyTool(name, toolArgs, connection, safety);
     }
     if (systemToolNames.has(name)) {
-      return await handleSystemTool(name, toolArgs, connection);
+      return await handleSystemTool(name, toolArgs, connection, safety);
     }
     if (batchToolNames.has(name)) {
       return await handleBatchTool(name, toolArgs, connection, safety);
@@ -241,6 +250,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
     if (sensorToolNames.has(name)) {
       return await handleSensorTool(name, toolArgs, connection);
+    }
+    if (powerToolNames.has(name)) {
+      return await handlePowerTool(name, toolArgs, connection);
+    }
+    if (paramToolNames.has(name)) {
+      return await handleParamTool(name, toolArgs, connection, safety);
+    }
+    if (descriptionToolNames.has(name)) {
+      return await handleDescriptionTool(name, toolArgs, connection);
     }
 
     return {

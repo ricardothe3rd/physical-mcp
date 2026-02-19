@@ -141,6 +141,9 @@ const waypointMock = makeMockToolModule('waypoint', ['ros2_waypoint_follow']);
 const introspectionMock = makeMockToolModule('introspection', ['ros2_msg_type_info']);
 const namespaceMock = makeMockToolModule('namespace', ['ros2_namespace_list']);
 const sensorMock = makeMockToolModule('sensor', ['ros2_sensor_summary']);
+const paramMock = makeMockToolModule('param', ['ros2_param_list', 'ros2_param_get']);
+const descriptionMock = makeMockToolModule('description', ['ros2_robot_description']);
+const powerMock = makeMockToolModule('power', ['ros2_battery_status']);
 
 vi.mock('./tools/topic-tools.js', () => ({
   getTopicTools: topicMock.getTools,
@@ -210,6 +213,18 @@ vi.mock('./tools/sensor-tools.js', () => ({
   getSensorTools: sensorMock.getTools,
   handleSensorTool: sensorMock.handleTool,
 }));
+vi.mock('./tools/param-tools.js', () => ({
+  getParamTools: paramMock.getTools,
+  handleParamTool: paramMock.handleTool,
+}));
+vi.mock('./tools/description-tools.js', () => ({
+  getDescriptionTools: descriptionMock.getTools,
+  handleDescriptionTool: descriptionMock.handleTool,
+}));
+vi.mock('./tools/power-tools.js', () => ({
+  getPowerTools: powerMock.getTools,
+  handlePowerTool: powerMock.handleTool,
+}));
 
 // ---------------------------------------------------------------------------
 // Suppress console.error output from the module under test
@@ -260,6 +275,9 @@ beforeEach(() => {
   introspectionMock.handleTool.mockClear();
   namespaceMock.handleTool.mockClear();
   sensorMock.handleTool.mockClear();
+  paramMock.handleTool.mockClear();
+  descriptionMock.handleTool.mockClear();
+  powerMock.handleTool.mockClear();
 
   // Default: bridge is disconnected and connect fails
   globalThis.__test_mock_connection.isConnected = false;
@@ -285,7 +303,7 @@ describe('index.ts integration', () => {
       expect(typeof callToolHandler).toBe('function');
     });
 
-    it('ListTools returns all tools from all 17 modules', async () => {
+    it('ListTools returns all tools from all 20 modules', async () => {
       const result = await listToolsHandler();
       expect(result.tools).toBeDefined();
       expect(Array.isArray(result.tools)).toBe(true);
@@ -307,11 +325,14 @@ describe('index.ts integration', () => {
         waypointMock.getTools().length +
         introspectionMock.getTools().length +
         namespaceMock.getTools().length +
-        sensorMock.getTools().length;
+        sensorMock.getTools().length +
+        paramMock.getTools().length +
+        descriptionMock.getTools().length +
+        powerMock.getTools().length;
       expect(result.tools.length).toBe(expectedCount);
     });
 
-    it('all 17 getter functions are called during module import', () => {
+    it('all 20 getter functions are called during module import', () => {
       // getTools is called twice per module: once for allTools array, once for the name Set
       expect(topicMock.getTools).toHaveBeenCalled();
       expect(serviceMock.getTools).toHaveBeenCalled();
@@ -330,6 +351,9 @@ describe('index.ts integration', () => {
       expect(introspectionMock.getTools).toHaveBeenCalled();
       expect(namespaceMock.getTools).toHaveBeenCalled();
       expect(sensorMock.getTools).toHaveBeenCalled();
+      expect(paramMock.getTools).toHaveBeenCalled();
+      expect(descriptionMock.getTools).toHaveBeenCalled();
+      expect(powerMock.getTools).toHaveBeenCalled();
     });
 
     it('each tool in ListTools has required name and description fields', async () => {
@@ -456,6 +480,24 @@ describe('index.ts integration', () => {
       globalThis.__test_mock_connection.connect.mockResolvedValueOnce(undefined);
       await callToolHandler(makeRequest('ros2_sensor_summary'));
       expect(sensorMock.handleTool).toHaveBeenCalledTimes(1);
+    });
+
+    it('dispatches param tool to handleParamTool', async () => {
+      globalThis.__test_mock_connection.connect.mockResolvedValueOnce(undefined);
+      await callToolHandler(makeRequest('ros2_param_list'));
+      expect(paramMock.handleTool).toHaveBeenCalledTimes(1);
+    });
+
+    it('dispatches description tool to handleDescriptionTool', async () => {
+      globalThis.__test_mock_connection.connect.mockResolvedValueOnce(undefined);
+      await callToolHandler(makeRequest('ros2_robot_description'));
+      expect(descriptionMock.handleTool).toHaveBeenCalledTimes(1);
+    });
+
+    it('dispatches power tool to handlePowerTool', async () => {
+      globalThis.__test_mock_connection.connect.mockResolvedValueOnce(undefined);
+      await callToolHandler(makeRequest('ros2_battery_status'));
+      expect(powerMock.handleTool).toHaveBeenCalledTimes(1);
     });
   });
 

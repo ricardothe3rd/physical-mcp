@@ -20,6 +20,9 @@ import { getWaypointTools } from './waypoint-tools.js';
 import { getIntrospectionTools } from './introspection-tools.js';
 import { getNamespaceTools } from './namespace-tools.js';
 import { getSensorTools } from './sensor-tools.js';
+import { getPowerTools } from './power-tools.js';
+import { getParamTools } from './param-tools.js';
+import { getDescriptionTools } from './description-tools.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
 
 // Create a simple mock object instead of mocking the module
@@ -66,9 +69,31 @@ describe('Tool Definitions', () => {
 
   it('system tools have correct count', () => {
     const tools = getSystemTools();
-    expect(tools.length).toBe(6);
+    expect(tools.length).toBe(4);
+    expect(tools.map(t => t.name)).toContain('system_bridge_status');
+    expect(tools.map(t => t.name)).toContain('system_health_status');
+  });
+
+  it('param tools have correct count', () => {
+    const tools = getParamTools();
+    expect(tools.length).toBe(3);
     expect(tools.map(t => t.name)).toContain('ros2_param_get');
     expect(tools.map(t => t.name)).toContain('ros2_param_set');
+    expect(tools.map(t => t.name)).toContain('ros2_param_list');
+  });
+
+  it('power tools have correct count', () => {
+    const tools = getPowerTools();
+    expect(tools.length).toBe(2);
+    expect(tools.map(t => t.name)).toContain('ros2_battery_status');
+    expect(tools.map(t => t.name)).toContain('ros2_power_supply_status');
+  });
+
+  it('description tools have correct count', () => {
+    const tools = getDescriptionTools();
+    expect(tools.length).toBe(2);
+    expect(tools.map(t => t.name)).toContain('ros2_robot_description');
+    expect(tools.map(t => t.name)).toContain('ros2_robot_joints');
   });
 
   it('batch tools have correct count', () => {
@@ -103,6 +128,9 @@ describe('Tool Definitions', () => {
       ...getIntrospectionTools(),
       ...getNamespaceTools(),
       ...getSensorTools(),
+      ...getPowerTools(),
+      ...getParamTools(),
+      ...getDescriptionTools(),
     ];
     const names = allTools.map(t => t.name);
     const uniqueNames = new Set(names);
@@ -128,6 +156,9 @@ describe('Tool Definitions', () => {
       ...getIntrospectionTools(),
       ...getNamespaceTools(),
       ...getSensorTools(),
+      ...getPowerTools(),
+      ...getParamTools(),
+      ...getDescriptionTools(),
     ];
     for (const tool of allTools) {
       expect(tool.description).toBeTruthy();
@@ -154,6 +185,9 @@ describe('Tool Definitions', () => {
       ...getIntrospectionTools(),
       ...getNamespaceTools(),
       ...getSensorTools(),
+      ...getPowerTools(),
+      ...getParamTools(),
+      ...getDescriptionTools(),
     ];
     for (const tool of allTools) {
       expect(tool.inputSchema).toBeDefined();
@@ -238,7 +272,7 @@ describe('Tool Definitions', () => {
     expect(tools.map(t => t.name)).toContain('ros2_sensor_read');
   });
 
-  it('total tool count is 70', () => {
+  it('total tool count is 75', () => {
     const total =
       getTopicTools().length +
       getServiceTools().length +
@@ -256,8 +290,11 @@ describe('Tool Definitions', () => {
       getWaypointTools().length +
       getIntrospectionTools().length +
       getNamespaceTools().length +
-      getSensorTools().length;
-    expect(total).toBe(70);
+      getSensorTools().length +
+      getPowerTools().length +
+      getParamTools().length +
+      getDescriptionTools().length;
+    expect(total).toBe(75);
   });
 });
 
