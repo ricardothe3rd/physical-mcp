@@ -8,6 +8,7 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { CommandType } from '../bridge/protocol.js';
 import { ConnectionManager } from '../bridge/connection-manager.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
+import { validateTopicName, validateMessagePayload } from '../utils/input-validation.js';
 
 // Break zodToJsonSchema type inference chain to prevent tsc hang
 function toInputSchema(schema: z.ZodType): Tool['inputSchema'] {
@@ -75,7 +76,12 @@ export async function handleTopicTool(
     }
 
     case 'ros2_topic_info': {
-      const response = await connection.send(CommandType.TOPIC_INFO, { topic: args.topic });
+      const topicName = args.topic as string;
+      const nameCheck = validateTopicName(topicName);
+      if (!nameCheck.valid) {
+        return { content: [{ type: 'text', text: `Invalid topic name: ${nameCheck.error}` }], isError: true };
+      }
+      const response = await connection.send(CommandType.TOPIC_INFO, { topic: topicName });
       if (response.status === 'error') {
         return { content: [{ type: 'text', text: `Error: ${JSON.stringify(response.data)}` }], isError: true };
       }
@@ -83,8 +89,13 @@ export async function handleTopicTool(
     }
 
     case 'ros2_topic_subscribe': {
+      const subTopic = args.topic as string;
+      const subCheck = validateTopicName(subTopic);
+      if (!subCheck.valid) {
+        return { content: [{ type: 'text', text: `Invalid topic name: ${subCheck.error}` }], isError: true };
+      }
       const response = await connection.send(CommandType.TOPIC_SUBSCRIBE, {
-        topic: args.topic,
+        topic: subTopic,
         message_type: args.messageType,
         count: args.count || 1,
         timeout_sec: args.timeoutSec || 5,
@@ -98,6 +109,16 @@ export async function handleTopicTool(
     case 'ros2_topic_publish': {
       const topic = args.topic as string;
       const message = args.message as Record<string, unknown>;
+
+      // INPUT VALIDATION
+      const pubNameCheck = validateTopicName(topic);
+      if (!pubNameCheck.valid) {
+        return { content: [{ type: 'text', text: `Invalid topic name: ${pubNameCheck.error}` }], isError: true };
+      }
+      const msgCheck = validateMessagePayload(message);
+      if (!msgCheck.valid) {
+        return { content: [{ type: 'text', text: `Invalid message: ${msgCheck.error}` }], isError: true };
+      }
 
       // SAFETY CHECK
       const check = safety.checkPublish(topic, message);
@@ -123,8 +144,13 @@ export async function handleTopicTool(
     }
 
     case 'ros2_topic_echo': {
+      const echoTopic = args.topic as string;
+      const echoCheck = validateTopicName(echoTopic);
+      if (!echoCheck.valid) {
+        return { content: [{ type: 'text', text: `Invalid topic name: ${echoCheck.error}` }], isError: true };
+      }
       const response = await connection.send(CommandType.TOPIC_ECHO, {
-        topic: args.topic,
+        topic: echoTopic,
         message_type: args.messageType,
         timeout_sec: args.timeoutSec || 3,
       });

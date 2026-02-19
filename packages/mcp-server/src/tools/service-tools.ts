@@ -8,6 +8,7 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { CommandType } from '../bridge/protocol.js';
 import { ConnectionManager } from '../bridge/connection-manager.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
+import { validateServiceName } from '../utils/input-validation.js';
 
 function toInputSchema(schema: z.ZodType): Tool['inputSchema'] {
   return zodToJsonSchema(schema) as unknown as Tool['inputSchema'];
@@ -55,7 +56,12 @@ export async function handleServiceTool(
     }
 
     case 'ros2_service_info': {
-      const response = await connection.send(CommandType.SERVICE_INFO, { service: args.service });
+      const svcName = args.service as string;
+      const svcCheck = validateServiceName(svcName);
+      if (!svcCheck.valid) {
+        return { content: [{ type: 'text', text: `Invalid service name: ${svcCheck.error}` }], isError: true };
+      }
+      const response = await connection.send(CommandType.SERVICE_INFO, { service: svcName });
       if (response.status === 'error') {
         return { content: [{ type: 'text', text: `Error: ${JSON.stringify(response.data)}` }], isError: true };
       }
@@ -65,6 +71,12 @@ export async function handleServiceTool(
     case 'ros2_service_call': {
       const service = args.service as string;
       const callArgs = (args.args || {}) as Record<string, unknown>;
+
+      // INPUT VALIDATION
+      const callCheck = validateServiceName(service);
+      if (!callCheck.valid) {
+        return { content: [{ type: 'text', text: `Invalid service name: ${callCheck.error}` }], isError: true };
+      }
 
       // SAFETY CHECK
       const check = safety.checkServiceCall(service, callArgs);

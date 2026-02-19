@@ -8,6 +8,7 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { CommandType } from '../bridge/protocol.js';
 import { ConnectionManager } from '../bridge/connection-manager.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
+import { validateActionName } from '../utils/input-validation.js';
 
 function toInputSchema(schema: z.ZodType): Tool['inputSchema'] {
   return zodToJsonSchema(schema) as unknown as Tool['inputSchema'];
@@ -65,6 +66,12 @@ export async function handleActionTool(
     case 'ros2_action_send_goal': {
       const action = args.action as string;
       const goal = args.goal as Record<string, unknown>;
+
+      // INPUT VALIDATION
+      const actionCheck = validateActionName(action);
+      if (!actionCheck.valid) {
+        return { content: [{ type: 'text', text: `Invalid action name: ${actionCheck.error}` }], isError: true };
+      }
 
       // SAFETY CHECK
       const check = safety.checkActionGoal(action, goal);
