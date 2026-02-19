@@ -15,8 +15,8 @@ from physical_mcp_bridge.protocol import (
 class TestCommandType:
     """Tests for CommandType enum."""
 
-    def test_has_all_16_types(self):
-        assert len(CommandType) == 16
+    def test_has_all_19_types(self):
+        assert len(CommandType) == 19
 
     def test_topic_types(self):
         assert CommandType.TOPIC_LIST == "topic.list"
