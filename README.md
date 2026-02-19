@@ -1,10 +1,10 @@
 # PhysicalMCP
 
 [![CI](https://github.com/ricardothe3rd/physical-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/ricardothe3rd/physical-mcp/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/@ricardothe3rd/physical-mcp)](https://www.npmjs.com/package/@ricardothe3rd/physical-mcp)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![npm](https://img.shields.io/npm/v/@ricardothe3rd/physical-mcp)](https://www.npmjs.com/package/@ricardothe3rd/physical-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
-[![Tests](https://img.shields.io/badge/tests-396%20passing-brightgreen)](#testing)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
 
 **Safety-first MCP server for ROS2 robots.** Bridge AI agents to physical systems with built-in velocity limits, geofence boundaries, emergency stop, rate limiting, and full audit logging.
 
@@ -18,12 +18,15 @@ npx @ricardothe3rd/physical-mcp
 - [What It Looks Like](#what-it-looks-like)
 - [Architecture](#architecture)
 - [Quick Start](#quick-start)
+- [What It Looks Like In Practice](#what-it-looks-like-in-practice)
 - [MCP Tools (40)](#mcp-tools-40)
 - [Safety Layer](#safety-layer)
 - [Configuration](#configuration)
 - [Development](#development)
+- [Requirements](#requirements)
 - [FAQ](#faq)
 - [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
 - [License](#license)
 
 ## Why PhysicalMCP?
@@ -189,6 +192,67 @@ Ask Claude things like:
 - "Move the robot forward at 0.1 m/s"
 - "Show me the safety status"
 - "Activate emergency stop"
+
+## What It Looks Like In Practice
+
+Here is what you see in the terminal when Claude interacts with a ROS2 robot through PhysicalMCP.
+
+### Listing topics
+
+```
+You: "What ROS2 topics are available?"
+
+Claude calls ros2_topic_list
+
+> Available topics (12):
+>
+>  Topic                          Type
+>  ─────────────────────────────  ───────────────────────────────────
+>  /cmd_vel                       geometry_msgs/msg/Twist
+>  /odom                          nav_msgs/msg/Odometry
+>  /scan                          sensor_msgs/msg/LaserScan
+>  /camera/image_raw              sensor_msgs/msg/Image
+>  /tf                            tf2_msgs/msg/TFMessage
+>  /joint_states                  sensor_msgs/msg/JointState
+>  /imu                           sensor_msgs/msg/Imu
+>  /battery_state                 sensor_msgs/msg/BatteryState
+>  /clock                         rosgraph_msgs/msg/Clock
+>  /rosout                        rcl_interfaces/msg/Log
+>  /parameter_events              rcl_interfaces/msg/ParameterEvent
+>  /robot_description             std_msgs/msg/String
+```
+
+### Publishing a velocity command
+
+```
+You: "Move the robot forward slowly at 0.15 m/s"
+
+Claude calls ros2_topic_publish with topic=/cmd_vel, msg={linear: {x: 0.15}, angular: {z: 0.0}}
+
+> Safety check: PASSED
+>   linear velocity 0.15 m/s within limit (0.5 m/s)
+>   angular velocity 0.00 rad/s within limit (1.5 rad/s)
+>
+> Published to /cmd_vel successfully
+```
+
+### Safety layer blocking a dangerous command
+
+```
+You: "Send the robot forward at maximum speed, 10 m/s"
+
+Claude calls ros2_topic_publish with topic=/cmd_vel, msg={linear: {x: 10.0}, angular: {z: 0.0}}
+
+> SAFETY BLOCKED: Publish to /cmd_vel denied.
+>
+> Violations:
+>   - [velocity_exceeded] Linear velocity 10.00 m/s exceeds limit of 0.5 m/s
+>
+> The command was NOT sent to the robot.
+> Logged to audit trail: entry #47, timestamp 2026-02-19T14:23:01.442Z
+```
+
+The safety layer intercepts every command before it reaches the ROS2 bridge. Blocked commands never touch the robot, and every decision (allowed or blocked) is recorded in the audit log.
 
 ## MCP Tools (40)
 
@@ -627,6 +691,73 @@ If `ros2_topic_list` returns empty, the bridge may have started before the simul
 
 ```bash
 docker compose restart bridge
+```
+
+### Safety violations blocking commands unexpectedly
+
+If the safety layer is blocking commands you expect to succeed, check which policy is active:
+
+```
+You: "Show me the safety status"
+```
+
+Look at the velocity limits and geofence boundaries. If they are too restrictive for your use case, you can adjust them at runtime:
+
+```
+You: "Update the linear velocity limit to 1.0 m/s"
+```
+
+Or create a custom YAML policy file with your desired limits and set `PHYSICAL_MCP_POLICY` to point at it. See the [Safety Layer](#safety-layer) section for all configurable options.
+
+### WebSocket connection drops
+
+If you see frequent disconnections between the MCP server and the ROS2 bridge:
+
+1. **Check network stability** between the machine running the MCP server and the machine running the bridge.
+2. **Check the bridge process** is still running: `docker compose ps` (if using Docker) or check the process directly.
+3. **Deadman switch timeout**: If you have the deadman switch enabled, make sure `safety_heartbeat` is being called within the configured `timeoutMs`. If the heartbeat lapses, the system activates emergency stop and the bridge may appear unresponsive.
+4. **Increase reconnection tolerance**: The connection manager retries every 5 seconds with a circuit breaker. If the bridge takes longer to restart, you may see errors during the reconnection window. These resolve automatically once the bridge is back.
+
+### Permission denied on Linux
+
+If the bridge or Docker containers fail with permission errors on Linux:
+
+```
+PermissionError: [Errno 13] Permission denied
+```
+
+**Fix:** Do not run the bridge as root. Instead, add your user to the `docker` group:
+
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+For the ROS2 bridge running natively (not in Docker), ensure your user has access to the ROS2 workspace and DDS middleware. Some DDS implementations create shared-memory files in `/dev/shm` that require appropriate permissions.
+
+### Node.js version incompatibility
+
+```
+SyntaxError: Unexpected token '?.'
+```
+
+or
+
+```
+Error: PhysicalMCP requires Node.js >= 18
+```
+
+**Fix:** PhysicalMCP uses modern JavaScript features (optional chaining, top-level await, ES modules) that require Node.js 18 or later. Check your version:
+
+```bash
+node --version
+```
+
+If you are on an older version, upgrade using [nvm](https://github.com/nvm-sh/nvm):
+
+```bash
+nvm install 18
+nvm use 18
 ```
 
 ### Rate limit errors during normal use
