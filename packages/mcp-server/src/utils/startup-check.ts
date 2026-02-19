@@ -37,14 +37,77 @@ export function runStartupChecks(config: {
     });
   }
 
-  // 2. Validate policy file exists (if specified)
+  // 2. Validate bridge port is in valid range (1-65535)
+  try {
+    const url = new URL(config.bridgeUrl);
+    if (url.port) {
+      const port = parseInt(url.port, 10);
+      if (isNaN(port) || port < 1 || port > 65535) {
+        checks.push({
+          name: 'bridge-port',
+          status: 'fail',
+          message: `Bridge port must be between 1 and 65535, got: ${url.port}`,
+        });
+      } else {
+        checks.push({ name: 'bridge-port', status: 'ok', message: `Bridge port: ${port}` });
+      }
+    } else {
+      checks.push({ name: 'bridge-port', status: 'ok', message: 'Bridge port: default' });
+    }
+  } catch {
+    // URL parse failure already caught by bridge-url check above
+    checks.push({
+      name: 'bridge-port',
+      status: 'fail',
+      message: 'Cannot validate port — bridge URL is invalid',
+    });
+  }
+
+  // 3. Validate PHYSICAL_MCP_BRIDGE_URL env var format if set
+  const envBridgeUrl = process.env.PHYSICAL_MCP_BRIDGE_URL;
+  if (envBridgeUrl !== undefined) {
+    try {
+      const envUrl = new URL(envBridgeUrl);
+      if (envUrl.protocol !== 'ws:' && envUrl.protocol !== 'wss:') {
+        checks.push({
+          name: 'env-bridge-url',
+          status: 'fail',
+          message: `PHYSICAL_MCP_BRIDGE_URL must use ws:// or wss://, got: ${envUrl.protocol}`,
+        });
+      } else {
+        checks.push({ name: 'env-bridge-url', status: 'ok', message: `PHYSICAL_MCP_BRIDGE_URL: ${envBridgeUrl}` });
+      }
+    } catch {
+      checks.push({
+        name: 'env-bridge-url',
+        status: 'fail',
+        message: `PHYSICAL_MCP_BRIDGE_URL is not a valid URL: ${envBridgeUrl}`,
+      });
+    }
+  }
+
+  // 4. Validate PHYSICAL_MCP_POLICY env var file exists if set
+  const envPolicyPath = process.env.PHYSICAL_MCP_POLICY;
+  if (envPolicyPath !== undefined) {
+    if (existsSync(envPolicyPath)) {
+      checks.push({ name: 'env-policy-path', status: 'ok', message: `PHYSICAL_MCP_POLICY file exists: ${envPolicyPath}` });
+    } else {
+      checks.push({
+        name: 'env-policy-path',
+        status: 'fail',
+        message: `PHYSICAL_MCP_POLICY file not found: ${envPolicyPath}`,
+      });
+    }
+  }
+
+  // 5. Validate policy file exists (if specified)
   if (config.policyPath) {
     if (existsSync(config.policyPath)) {
       try {
         const policy = loadPolicy(config.policyPath);
         checks.push({ name: 'policy-file', status: 'ok', message: `Policy loaded: ${policy.name}` });
 
-        // 3. Validate policy values
+        // 6. Validate policy values
         if (policy.velocity.linearMax <= 0) {
           checks.push({ name: 'policy-velocity', status: 'fail', message: 'linearMax must be positive' });
         } else if (policy.velocity.linearMax > 10) {
@@ -70,7 +133,7 @@ export function runStartupChecks(config: {
     checks.push({ name: 'policy-file', status: 'ok', message: 'Using default policy' });
   }
 
-  // 4. Check Node.js version
+  // 7. Check Node.js version
   const nodeVersion = parseInt(process.version.slice(1), 10);
   if (nodeVersion < 18) {
     checks.push({ name: 'node-version', status: 'fail', message: `Node.js >= 18 required, got: ${process.version}` });
