@@ -8,7 +8,9 @@ import WebSocket from 'ws';
 import { randomUUID } from 'crypto';
 import { BridgeResponseSchema, type CommandTypeValue } from './protocol.js';
 
+/** Response received from the Python ROS2 bridge for a sent command. */
 export interface BridgeResponse {
+  /** Correlation ID matching the original request, or null for unsolicited messages. */
   id: string | null;
   status: 'ok' | 'error';
   data: unknown;
@@ -35,11 +37,20 @@ export class WSClient {
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private lastPongTime = 0;
 
+  /**
+   * @param url - WebSocket URL of the ROS2 bridge
+   * @param requestTimeout - Milliseconds before a pending request is rejected
+   */
   constructor(url = 'ws://localhost:9090', requestTimeout = 10000) {
     this.url = url;
     this.requestTimeout = requestTimeout;
   }
 
+  /**
+   * Open a WebSocket connection to the bridge.
+   * Starts heartbeat pings (every 15s) and detects stale connections (30s without pong).
+   * @throws On connection error
+   */
   async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.ws = new WebSocket(this.url);
@@ -96,6 +107,14 @@ export class WSClient {
     }
   }
 
+  /**
+   * Send a command to the bridge and wait for its response.
+   * Each request is assigned a UUID for correlation with the response.
+   * @param type - The bridge command type
+   * @param params - Command parameters
+   * @returns The correlated bridge response
+   * @throws If not connected or the request times out
+   */
   async send(type: CommandTypeValue, params: Record<string, unknown> = {}): Promise<BridgeResponse> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error('Not connected to bridge');
@@ -139,6 +158,7 @@ export class WSClient {
     this.pendingRequests.clear();
   }
 
+  /** Close the WebSocket connection and reject all pending requests. */
   disconnect() {
     this.stopHeartbeat();
     if (this.ws) {
@@ -148,6 +168,7 @@ export class WSClient {
     }
   }
 
+  /** Whether the WebSocket is open and ready to send commands. */
   get isConnected(): boolean {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
   }
