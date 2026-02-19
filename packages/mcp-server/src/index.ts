@@ -30,6 +30,9 @@ import { getBatchTools, handleBatchTool } from './tools/batch-tools.js';
 import { getRecordingTools, handleRecordingTool } from './tools/recording-tools.js';
 import { getConditionalTools, handleConditionalTool } from './tools/conditional-tools.js';
 import { getScheduledTools, handleScheduledTool } from './tools/scheduled-tools.js';
+import { getTfTools, handleTfTool } from './tools/tf-tools.js';
+import { getDiagnosticTools, handleDiagnosticTool } from './tools/diagnostic-tools.js';
+import { getFleetTools, handleFleetTool } from './tools/fleet-tools.js';
 
 // --- CLI argument parsing ---
 function parseArgs(): { bridgeUrl: string; policyPath?: string; verbose: boolean } {
@@ -124,6 +127,9 @@ const allTools = [
   ...getRecordingTools(),
   ...getConditionalTools(),
   ...getScheduledTools(),
+  ...getTfTools(),
+  ...getDiagnosticTools(),
+  ...getFleetTools(),
 ];
 
 // Tool name -> category mapping for dispatch
@@ -136,6 +142,9 @@ const batchToolNames = new Set(getBatchTools().map(t => t.name));
 const recordingToolNames = new Set(getRecordingTools().map(t => t.name));
 const conditionalToolNames = new Set(getConditionalTools().map(t => t.name));
 const scheduledToolNames = new Set(getScheduledTools().map(t => t.name));
+const tfToolNames = new Set(getTfTools().map(t => t.name));
+const diagnosticToolNames = new Set(getDiagnosticTools().map(t => t.name));
+const fleetToolNames = new Set(getFleetTools().map(t => t.name));
 
 // List tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -193,6 +202,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
     if (scheduledToolNames.has(name)) {
       return await handleScheduledTool(name, toolArgs, connection, safety);
+    }
+    if (tfToolNames.has(name)) {
+      return await handleTfTool(name, toolArgs, connection);
+    }
+    if (diagnosticToolNames.has(name)) {
+      return await handleDiagnosticTool(name, toolArgs, connection);
+    }
+    if (fleetToolNames.has(name)) {
+      return await handleFleetTool(name, toolArgs, connection);
     }
 
     return {

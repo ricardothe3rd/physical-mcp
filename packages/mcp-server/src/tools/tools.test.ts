@@ -12,6 +12,9 @@ import { getBatchTools } from './batch-tools.js';
 import { getRecordingTools } from './recording-tools.js';
 import { getConditionalTools } from './conditional-tools.js';
 import { getScheduledTools } from './scheduled-tools.js';
+import { getTfTools } from './tf-tools.js';
+import { getDiagnosticTools } from './diagnostic-tools.js';
+import { getFleetTools } from './fleet-tools.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
 
 // Create a simple mock object instead of mocking the module
@@ -87,6 +90,9 @@ describe('Tool Definitions', () => {
       ...getRecordingTools(),
       ...getConditionalTools(),
       ...getScheduledTools(),
+      ...getTfTools(),
+      ...getDiagnosticTools(),
+      ...getFleetTools(),
     ];
     const names = allTools.map(t => t.name);
     const uniqueNames = new Set(names);
@@ -104,6 +110,9 @@ describe('Tool Definitions', () => {
       ...getRecordingTools(),
       ...getConditionalTools(),
       ...getScheduledTools(),
+      ...getTfTools(),
+      ...getDiagnosticTools(),
+      ...getFleetTools(),
     ];
     for (const tool of allTools) {
       expect(tool.description).toBeTruthy();
@@ -122,6 +131,9 @@ describe('Tool Definitions', () => {
       ...getRecordingTools(),
       ...getConditionalTools(),
       ...getScheduledTools(),
+      ...getTfTools(),
+      ...getDiagnosticTools(),
+      ...getFleetTools(),
     ];
     for (const tool of allTools) {
       expect(tool.inputSchema).toBeDefined();
@@ -144,7 +156,29 @@ describe('Tool Definitions', () => {
     expect(tools.map(t => t.name)).toContain('ros2_schedule_list');
   });
 
-  it('total tool count is 48', () => {
+  it('tf tools have correct count', () => {
+    const tools = getTfTools();
+    expect(tools.length).toBe(2);
+    expect(tools.map(t => t.name)).toContain('ros2_tf_tree');
+    expect(tools.map(t => t.name)).toContain('ros2_tf_lookup');
+  });
+
+  it('diagnostic tools have correct count', () => {
+    const tools = getDiagnosticTools();
+    expect(tools.length).toBe(2);
+    expect(tools.map(t => t.name)).toContain('ros2_diagnostics_summary');
+    expect(tools.map(t => t.name)).toContain('ros2_diagnostics_detail');
+  });
+
+  it('fleet tools have correct count', () => {
+    const tools = getFleetTools();
+    expect(tools.length).toBe(3);
+    expect(tools.map(t => t.name)).toContain('ros2_fleet_status');
+    expect(tools.map(t => t.name)).toContain('ros2_fleet_add');
+    expect(tools.map(t => t.name)).toContain('ros2_fleet_remove');
+  });
+
+  it('total tool count is 55', () => {
     const total =
       getTopicTools().length +
       getServiceTools().length +
@@ -154,8 +188,11 @@ describe('Tool Definitions', () => {
       getBatchTools().length +
       getRecordingTools().length +
       getConditionalTools().length +
-      getScheduledTools().length;
-    expect(total).toBe(48);
+      getScheduledTools().length +
+      getTfTools().length +
+      getDiagnosticTools().length +
+      getFleetTools().length;
+    expect(total).toBe(55);
   });
 });
 
