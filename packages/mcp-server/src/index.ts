@@ -45,6 +45,7 @@ import { getCameraTools, handleCameraTool } from './tools/camera-tools.js';
 import { getMapTools, handleMapTool } from './tools/map-tools.js';
 import { getHistoryTools, handleHistoryTool } from './tools/history-tools.js';
 import { getPathTools, handlePathTool } from './tools/path-tools.js';
+import { getNetworkTools, handleNetworkTool } from './tools/network-tools.js';
 
 // --- CLI argument parsing ---
 function parseArgs(): { bridgeUrl: string; policyPath?: string; verbose: boolean } {
@@ -154,6 +155,7 @@ const allTools = [
   ...getMapTools(),
   ...getHistoryTools(),
   ...getPathTools(),
+  ...getNetworkTools(),
 ];
 
 // Tool name -> category mapping for dispatch
@@ -181,6 +183,7 @@ const cameraToolNames = new Set(getCameraTools().map(t => t.name));
 const mapToolNames = new Set(getMapTools().map(t => t.name));
 const historyToolNames = new Set(getHistoryTools().map(t => t.name));
 const pathToolNames = new Set(getPathTools().map(t => t.name));
+const networkToolNames = new Set(getNetworkTools().map(t => t.name));
 
 // List tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -283,6 +286,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
     if (pathToolNames.has(name)) {
       return await handlePathTool(name, toolArgs, connection, safety);
+    }
+    if (networkToolNames.has(name)) {
+      return await handleNetworkTool(name, toolArgs, connection);
     }
 
     return {

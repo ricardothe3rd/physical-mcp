@@ -148,6 +148,7 @@ const cameraMock = makeMockToolModule('camera', ['ros2_camera_info']);
 const mapMock = makeMockToolModule('map', ['ros2_map_info']);
 const historyMock = makeMockToolModule('history', ['ros2_command_history']);
 const pathMock = makeMockToolModule('path', ['ros2_plan_path']);
+const networkMock = makeMockToolModule('network', ['ros2_network_stats']);
 
 vi.mock('./tools/topic-tools.js', () => ({
   getTopicTools: topicMock.getTools,
@@ -245,6 +246,10 @@ vi.mock('./tools/path-tools.js', () => ({
   getPathTools: pathMock.getTools,
   handlePathTool: pathMock.handleTool,
 }));
+vi.mock('./tools/network-tools.js', () => ({
+  getNetworkTools: networkMock.getTools,
+  handleNetworkTool: networkMock.handleTool,
+}));
 
 // ---------------------------------------------------------------------------
 // Suppress console.error output from the module under test
@@ -302,6 +307,7 @@ beforeEach(() => {
   mapMock.handleTool.mockClear();
   historyMock.handleTool.mockClear();
   pathMock.handleTool.mockClear();
+  networkMock.handleTool.mockClear();
 
   // Default: bridge is disconnected and connect fails
   globalThis.__test_mock_connection.isConnected = false;
@@ -327,7 +333,7 @@ describe('index.ts integration', () => {
       expect(typeof callToolHandler).toBe('function');
     });
 
-    it('ListTools returns all tools from all 24 modules', async () => {
+    it('ListTools returns all tools from all 25 modules', async () => {
       const result = await listToolsHandler();
       expect(result.tools).toBeDefined();
       expect(Array.isArray(result.tools)).toBe(true);
@@ -356,11 +362,12 @@ describe('index.ts integration', () => {
         cameraMock.getTools().length +
         mapMock.getTools().length +
         historyMock.getTools().length +
-        pathMock.getTools().length;
+        pathMock.getTools().length +
+        networkMock.getTools().length;
       expect(result.tools.length).toBe(expectedCount);
     });
 
-    it('all 24 getter functions are called during module import', () => {
+    it('all 25 getter functions are called during module import', () => {
       // getTools is called twice per module: once for allTools array, once for the name Set
       expect(topicMock.getTools).toHaveBeenCalled();
       expect(serviceMock.getTools).toHaveBeenCalled();
@@ -386,6 +393,7 @@ describe('index.ts integration', () => {
       expect(mapMock.getTools).toHaveBeenCalled();
       expect(historyMock.getTools).toHaveBeenCalled();
       expect(pathMock.getTools).toHaveBeenCalled();
+      expect(networkMock.getTools).toHaveBeenCalled();
     });
 
     it('each tool in ListTools has required name and description fields', async () => {
@@ -554,6 +562,12 @@ describe('index.ts integration', () => {
       globalThis.__test_mock_connection.connect.mockResolvedValueOnce(undefined);
       await callToolHandler(makeRequest('ros2_plan_path'));
       expect(pathMock.handleTool).toHaveBeenCalledTimes(1);
+    });
+
+    it('dispatches network tool to handleNetworkTool', async () => {
+      globalThis.__test_mock_connection.connect.mockResolvedValueOnce(undefined);
+      await callToolHandler(makeRequest('ros2_network_stats'));
+      expect(networkMock.handleTool).toHaveBeenCalledTimes(1);
     });
   });
 
