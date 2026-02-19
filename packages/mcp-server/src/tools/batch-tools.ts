@@ -33,8 +33,7 @@ const ACTION_TOOL_NAMES = new Set([
   'ros2_action_list', 'ros2_action_send_goal', 'ros2_action_cancel', 'ros2_action_status',
 ]);
 const SYSTEM_TOOL_NAMES = new Set([
-  'system_bridge_status', 'system_node_list', 'system_node_info',
-  'ros2_param_list', 'ros2_param_get', 'ros2_param_set',
+  'system_bridge_status', 'system_node_list', 'system_node_info', 'system_health_status',
 ]);
 
 export function getBatchTools(): Tool[] {
@@ -91,7 +90,7 @@ export async function handleBatchTool(
       } else if (ACTION_TOOL_NAMES.has(toolName)) {
         result = await handleActionTool(toolName, toolArgs, connection, safety);
       } else if (SYSTEM_TOOL_NAMES.has(toolName)) {
-        result = await handleSystemTool(toolName, toolArgs, connection);
+        result = await handleSystemTool(toolName, toolArgs, connection, safety);
       } else if (toolName.startsWith('safety_')) {
         result = await handleSafetyTool(toolName, toolArgs, connection, safety);
       } else {
