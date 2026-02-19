@@ -6,6 +6,7 @@ and executes them against the ROS2 graph.
 
 import asyncio
 import json
+import os
 import signal
 import sys
 import threading
@@ -166,17 +167,50 @@ async def ws_handler(bridge: BridgeNode, websocket):
         bridge.get_logger().info('Client disconnected')
 
 
-async def run_server(bridge: BridgeNode, host: str = '0.0.0.0', port: int = 9090):
+async def run_server(bridge: BridgeNode, host: str = '0.0.0.0', port: int = 9090,
+                     shutdown_event: asyncio.Event | None = None):
     """Run the WebSocket server."""
     bridge.get_logger().info(f'WebSocket server starting on ws://{host}:{port}')
 
+    if shutdown_event is None:
+        shutdown_event = asyncio.Event()
+
     async with serve(lambda ws: ws_handler(bridge, ws), host, port):
-        await asyncio.Future()  # run forever
+        await shutdown_event.wait()
 
 
 def spin_ros(bridge: BridgeNode):
     """Spin ROS2 node in a separate thread."""
     rclpy.spin(bridge)
+
+
+def _setup_signal_handlers(bridge: BridgeNode, shutdown_event: asyncio.Event,
+                           loop: asyncio.AbstractEventLoop):
+    """Register SIGTERM/SIGINT handlers for graceful shutdown."""
+
+    def _handle_signal(signum, frame):
+        sig_name = signal.Signals(signum).name
+        bridge.get_logger().info(f'Shutdown requested via {sig_name}')
+
+        # Cancel all active goals
+        bridge.actions.cancel_all()
+
+        # Publish zero velocity as safety measure
+        try:
+            bridge.topics.publish(
+                '/cmd_vel',
+                'geometry_msgs/msg/Twist',
+                {'linear': {'x': 0.0, 'y': 0.0, 'z': 0.0},
+                 'angular': {'x': 0.0, 'y': 0.0, 'z': 0.0}},
+            )
+        except Exception:
+            pass
+
+        # Signal the server to stop
+        loop.call_soon_threadsafe(shutdown_event.set)
+
+    signal.signal(signal.SIGTERM, _handle_signal)
+    signal.signal(signal.SIGINT, _handle_signal)
 
 
 def main():
@@ -187,16 +221,22 @@ def main():
     ros_thread = threading.Thread(target=spin_ros, args=(bridge,), daemon=True)
     ros_thread.start()
 
-    host = '0.0.0.0'
-    port = 9090
+    host = os.environ.get('PHYSICAL_MCP_BRIDGE_HOST', '0.0.0.0')
+    port = int(os.environ.get('PHYSICAL_MCP_BRIDGE_PORT', '9090'))
 
     bridge.get_logger().info(f'PhysicalMCP Bridge v0.1.0 ready on ws://{host}:{port}')
 
+    shutdown_event = asyncio.Event()
+    loop = asyncio.new_event_loop()
+
+    _setup_signal_handlers(bridge, shutdown_event, loop)
+
     try:
-        asyncio.run(run_server(bridge, host, port))
+        loop.run_until_complete(run_server(bridge, host, port, shutdown_event))
     except KeyboardInterrupt:
         bridge.get_logger().info('Bridge shutting down...')
     finally:
+        loop.close()
         bridge.destroy_node()
         rclpy.shutdown()
 

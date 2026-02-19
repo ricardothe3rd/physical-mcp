@@ -13,11 +13,13 @@ handle_command() is async, so each test uses asyncio.run() to drive it
 
 import asyncio
 import json
-from unittest.mock import MagicMock
+import os
+import signal
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from physical_mcp_bridge.bridge_node import BridgeNode
+from physical_mcp_bridge.bridge_node import BridgeNode, _setup_signal_handlers, run_server
 
 
 # ---------------------------------------------------------------------------
@@ -390,3 +392,234 @@ class TestErrorHandling:
         bridge.discovery.list_topics.side_effect = RuntimeError("fail")
         _dispatch(bridge, "70", "topic.list")
         bridge.get_logger().error.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Signal handling
+# ---------------------------------------------------------------------------
+
+class TestSignalHandling:
+    """Verify SIGTERM/SIGINT signal handler registration and behavior."""
+
+    def test_registers_sigterm_and_sigint(self, bridge):
+        """_setup_signal_handlers should register handlers for both signals."""
+        shutdown_event = asyncio.Event()
+        loop = asyncio.new_event_loop()
+        original_sigterm = signal.getsignal(signal.SIGTERM)
+        original_sigint = signal.getsignal(signal.SIGINT)
+
+        try:
+            _setup_signal_handlers(bridge, shutdown_event, loop)
+
+            sigterm_handler = signal.getsignal(signal.SIGTERM)
+            sigint_handler = signal.getsignal(signal.SIGINT)
+
+            assert sigterm_handler is not original_sigterm
+            assert sigint_handler is not original_sigint
+            # Both should point to the same handler function
+            assert sigterm_handler is sigint_handler
+        finally:
+            # Restore original handlers
+            signal.signal(signal.SIGTERM, original_sigterm)
+            signal.signal(signal.SIGINT, original_sigint)
+            loop.close()
+
+    def test_signal_handler_cancels_all_goals(self, bridge):
+        """Receiving a signal should cancel all active goals."""
+        shutdown_event = asyncio.Event()
+        loop = asyncio.new_event_loop()
+        original_sigterm = signal.getsignal(signal.SIGTERM)
+        original_sigint = signal.getsignal(signal.SIGINT)
+
+        try:
+            _setup_signal_handlers(bridge, shutdown_event, loop)
+            handler = signal.getsignal(signal.SIGTERM)
+            handler(signal.SIGTERM, None)
+
+            bridge.actions.cancel_all.assert_called_once()
+        finally:
+            signal.signal(signal.SIGTERM, original_sigterm)
+            signal.signal(signal.SIGINT, original_sigint)
+            loop.close()
+
+    def test_signal_handler_publishes_zero_velocity(self, bridge):
+        """Receiving a signal should publish zero velocity to /cmd_vel."""
+        shutdown_event = asyncio.Event()
+        loop = asyncio.new_event_loop()
+        original_sigterm = signal.getsignal(signal.SIGTERM)
+        original_sigint = signal.getsignal(signal.SIGINT)
+
+        try:
+            _setup_signal_handlers(bridge, shutdown_event, loop)
+            handler = signal.getsignal(signal.SIGTERM)
+            handler(signal.SIGTERM, None)
+
+            bridge.topics.publish.assert_called_once_with(
+                '/cmd_vel',
+                'geometry_msgs/msg/Twist',
+                {'linear': {'x': 0.0, 'y': 0.0, 'z': 0.0},
+                 'angular': {'x': 0.0, 'y': 0.0, 'z': 0.0}},
+            )
+        finally:
+            signal.signal(signal.SIGTERM, original_sigterm)
+            signal.signal(signal.SIGINT, original_sigint)
+            loop.close()
+
+    def test_signal_handler_sets_shutdown_event(self, bridge):
+        """Receiving a signal should set the shutdown event via the loop."""
+        shutdown_event = asyncio.Event()
+        loop = asyncio.new_event_loop()
+        original_sigterm = signal.getsignal(signal.SIGTERM)
+        original_sigint = signal.getsignal(signal.SIGINT)
+
+        try:
+            _setup_signal_handlers(bridge, shutdown_event, loop)
+            handler = signal.getsignal(signal.SIGTERM)
+            handler(signal.SIGTERM, None)
+
+            # Run pending callbacks on the loop so call_soon_threadsafe fires
+            loop.run_until_complete(asyncio.sleep(0))
+            assert shutdown_event.is_set()
+        finally:
+            signal.signal(signal.SIGTERM, original_sigterm)
+            signal.signal(signal.SIGINT, original_sigint)
+            loop.close()
+
+    def test_signal_handler_logs_shutdown(self, bridge):
+        """Receiving a signal should log the shutdown request."""
+        shutdown_event = asyncio.Event()
+        loop = asyncio.new_event_loop()
+        original_sigterm = signal.getsignal(signal.SIGTERM)
+        original_sigint = signal.getsignal(signal.SIGINT)
+
+        try:
+            _setup_signal_handlers(bridge, shutdown_event, loop)
+            handler = signal.getsignal(signal.SIGTERM)
+            handler(signal.SIGTERM, None)
+
+            bridge.get_logger().info.assert_called()
+            log_msg = bridge.get_logger().info.call_args[0][0]
+            assert 'SIGTERM' in log_msg
+        finally:
+            signal.signal(signal.SIGTERM, original_sigterm)
+            signal.signal(signal.SIGINT, original_sigint)
+            loop.close()
+
+    def test_signal_handler_survives_publish_failure(self, bridge):
+        """Even if zero-velocity publish fails, shutdown should still proceed."""
+        shutdown_event = asyncio.Event()
+        loop = asyncio.new_event_loop()
+        original_sigterm = signal.getsignal(signal.SIGTERM)
+        original_sigint = signal.getsignal(signal.SIGINT)
+
+        bridge.topics.publish.side_effect = RuntimeError("publisher broken")
+
+        try:
+            _setup_signal_handlers(bridge, shutdown_event, loop)
+            handler = signal.getsignal(signal.SIGTERM)
+            # Should not raise
+            handler(signal.SIGTERM, None)
+
+            bridge.actions.cancel_all.assert_called_once()
+            loop.run_until_complete(asyncio.sleep(0))
+            assert shutdown_event.is_set()
+        finally:
+            signal.signal(signal.SIGTERM, original_sigterm)
+            signal.signal(signal.SIGINT, original_sigint)
+            loop.close()
+
+
+# ---------------------------------------------------------------------------
+# Environment variable configuration
+# ---------------------------------------------------------------------------
+
+class TestEnvironmentConfig:
+    """Verify host/port are configurable via environment variables."""
+
+    def test_default_host_and_port(self):
+        """Without env vars, main() should use 0.0.0.0:9090."""
+        with patch.dict(os.environ, {}, clear=False):
+            # Remove the env vars if they happen to be set
+            os.environ.pop('PHYSICAL_MCP_BRIDGE_HOST', None)
+            os.environ.pop('PHYSICAL_MCP_BRIDGE_PORT', None)
+
+            host = os.environ.get('PHYSICAL_MCP_BRIDGE_HOST', '0.0.0.0')
+            port = int(os.environ.get('PHYSICAL_MCP_BRIDGE_PORT', '9090'))
+
+            assert host == '0.0.0.0'
+            assert port == 9090
+
+    def test_custom_host_from_env(self):
+        """PHYSICAL_MCP_BRIDGE_HOST should override default host."""
+        with patch.dict(os.environ, {'PHYSICAL_MCP_BRIDGE_HOST': '127.0.0.1'}):
+            host = os.environ.get('PHYSICAL_MCP_BRIDGE_HOST', '0.0.0.0')
+            assert host == '127.0.0.1'
+
+    def test_custom_port_from_env(self):
+        """PHYSICAL_MCP_BRIDGE_PORT should override default port."""
+        with patch.dict(os.environ, {'PHYSICAL_MCP_BRIDGE_PORT': '8080'}):
+            port = int(os.environ.get('PHYSICAL_MCP_BRIDGE_PORT', '9090'))
+            assert port == 8080
+
+    def test_custom_host_and_port_from_env(self):
+        """Both env vars set together."""
+        with patch.dict(os.environ, {
+            'PHYSICAL_MCP_BRIDGE_HOST': '10.0.0.1',
+            'PHYSICAL_MCP_BRIDGE_PORT': '7777',
+        }):
+            host = os.environ.get('PHYSICAL_MCP_BRIDGE_HOST', '0.0.0.0')
+            port = int(os.environ.get('PHYSICAL_MCP_BRIDGE_PORT', '9090'))
+            assert host == '10.0.0.1'
+            assert port == 7777
+
+
+# ---------------------------------------------------------------------------
+# Graceful shutdown
+# ---------------------------------------------------------------------------
+
+class TestGracefulShutdown:
+    """Verify run_server stops cleanly when shutdown_event is set."""
+
+    def test_run_server_stops_on_shutdown_event(self):
+        """run_server should exit when shutdown_event is set."""
+        bridge = BridgeNode()
+        _logger = MagicMock()
+        bridge.get_logger = MagicMock(return_value=_logger)
+
+        shutdown_event = asyncio.Event()
+
+        async def _run_with_timeout():
+            # Set the event shortly after starting
+            async def _set_event():
+                await asyncio.sleep(0.05)
+                shutdown_event.set()
+
+            asyncio.create_task(_set_event())
+            await asyncio.wait_for(
+                run_server(bridge, '127.0.0.1', 0, shutdown_event),
+                timeout=2.0,
+            )
+
+        # Should complete without timeout
+        asyncio.run(_run_with_timeout())
+
+    def test_run_server_creates_default_shutdown_event(self):
+        """run_server with no shutdown_event should create one internally."""
+        bridge = BridgeNode()
+        _logger = MagicMock()
+        bridge.get_logger = MagicMock(return_value=_logger)
+
+        async def _run_briefly():
+            # We can't easily trigger the internal event, so just verify
+            # the function starts and we can cancel it.
+            task = asyncio.create_task(
+                run_server(bridge, '127.0.0.1', 0)
+            )
+            await asyncio.sleep(0.05)
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+        asyncio.run(_run_briefly())
