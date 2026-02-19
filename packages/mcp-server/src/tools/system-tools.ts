@@ -7,6 +7,8 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { CommandType } from '../bridge/protocol.js';
 import { ConnectionManager } from '../bridge/connection-manager.js';
+import type { PolicyEngine } from '../safety/policy-engine.js';
+import { getHealthStatus } from '../utils/health-check.js';
 
 function toInputSchema(schema: z.ZodType): Tool['inputSchema'] {
   return zodToJsonSchema(schema) as unknown as Tool['inputSchema'];
@@ -32,28 +34,9 @@ export function getSystemTools(): Tool[] {
       })),
     },
     {
-      name: 'ros2_param_list',
-      description: 'List all parameters for a ROS2 node',
-      inputSchema: toInputSchema(z.object({
-        nodeName: z.string().describe('Full node name'),
-      })),
-    },
-    {
-      name: 'ros2_param_get',
-      description: 'Get the value of a ROS2 parameter',
-      inputSchema: toInputSchema(z.object({
-        nodeName: z.string().describe('Full node name'),
-        paramName: z.string().describe('Parameter name'),
-      })),
-    },
-    {
-      name: 'ros2_param_set',
-      description: 'Set the value of a ROS2 parameter. SAFETY CHECKED — blocked parameters are protected.',
-      inputSchema: toInputSchema(z.object({
-        nodeName: z.string().describe('Full node name'),
-        paramName: z.string().describe('Parameter name'),
-        value: z.unknown().describe('New parameter value'),
-      })),
+      name: 'system_health_status',
+      description: 'Get overall server health status including bridge connectivity, safety state, memory usage, and uptime',
+      inputSchema: toInputSchema(z.object({})),
     },
   ];
 }
@@ -61,7 +44,8 @@ export function getSystemTools(): Tool[] {
 export async function handleSystemTool(
   name: string,
   args: Record<string, unknown>,
-  connection: ConnectionManager
+  connection: ConnectionManager,
+  safety: PolicyEngine
 ): Promise<{ content: { type: string; text: string }[]; isError?: boolean }> {
   switch (name) {
     case 'system_bridge_status': {
@@ -116,46 +100,10 @@ export async function handleSystemTool(
       return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
     }
 
-    case 'ros2_param_list': {
-      const response = await connection.send(CommandType.LIST_PARAMS, {
-        node_name: args.nodeName as string,
-      });
-      if (response.status === 'error') {
-        return { content: [{ type: 'text', text: `Error: ${JSON.stringify(response.data)}` }], isError: true };
-      }
-      return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
-    }
-
-    case 'ros2_param_get': {
-      const response = await connection.send(CommandType.GET_PARAMS, {
-        node_name: args.nodeName as string,
-        param_name: args.paramName as string,
-      });
-      if (response.status === 'error') {
-        return { content: [{ type: 'text', text: `Error: ${JSON.stringify(response.data)}` }], isError: true };
-      }
+    case 'system_health_status': {
+      const health = getHealthStatus(connection, safety);
       return {
-        content: [{
-          type: 'text',
-          text: `${args.nodeName}/${args.paramName} = ${JSON.stringify(response.data)}`,
-        }],
-      };
-    }
-
-    case 'ros2_param_set': {
-      const response = await connection.send(CommandType.SET_PARAMS, {
-        node_name: args.nodeName as string,
-        param_name: args.paramName as string,
-        value: args.value,
-      });
-      if (response.status === 'error') {
-        return { content: [{ type: 'text', text: `Error: ${JSON.stringify(response.data)}` }], isError: true };
-      }
-      return {
-        content: [{
-          type: 'text',
-          text: `Set ${args.nodeName}/${args.paramName} = ${JSON.stringify(args.value)}`,
-        }],
+        content: [{ type: 'text', text: JSON.stringify(health, null, 2) }],
       };
     }
 
