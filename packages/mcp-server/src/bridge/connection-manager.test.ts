@@ -3,12 +3,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Mock WSClient before importing ConnectionManager
 vi.mock('./ws-client.js', () => {
   return {
-    WSClient: vi.fn().mockImplementation(() => ({
-      connect: vi.fn().mockResolvedValue(undefined),
-      send: vi.fn().mockResolvedValue({ id: '1', status: 'ok', data: {}, timestamp: Date.now() }),
-      disconnect: vi.fn(),
-      isConnected: true,
-    })),
+    WSClient: class MockWSClient {
+      isConnected = true;
+      connect = vi.fn().mockResolvedValue(undefined);
+      send = vi.fn().mockResolvedValue({ id: '1', status: 'ok', data: {}, timestamp: Date.now() });
+      disconnect = vi.fn();
+    },
   };
 });
 
