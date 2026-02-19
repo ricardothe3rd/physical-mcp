@@ -8,6 +8,10 @@ interface RateWindow {
   timestamps: number[];
 }
 
+/**
+ * Sliding-window rate limiter for publish, service, and action commands.
+ * Tracks per-key timestamps and rejects commands that exceed configured limits.
+ */
 export class RateLimiter {
   private windows = new Map<string, RateWindow>();
   private config: RateLimitConfig;
@@ -16,14 +20,26 @@ export class RateLimiter {
     this.config = config;
   }
 
+  /**
+   * Check if a publish to the given topic exceeds the per-second rate limit.
+   * @returns A rate_limit_exceeded violation, or null if within limits
+   */
   checkPublish(topic: string): SafetyViolation | null {
     return this.check(`publish:${topic}`, this.config.publishHz, 1000);
   }
 
+  /**
+   * Check if a service call exceeds the per-minute rate limit.
+   * @returns A rate_limit_exceeded violation, or null if within limits
+   */
   checkService(service: string): SafetyViolation | null {
     return this.check(`service:${service}`, this.config.servicePerMinute, 60000);
   }
 
+  /**
+   * Check if an action goal send exceeds the per-minute rate limit.
+   * @returns A rate_limit_exceeded violation, or null if within limits
+   */
   checkAction(action: string): SafetyViolation | null {
     return this.check(`action:${action}`, this.config.actionPerMinute, 60000);
   }
@@ -53,10 +69,12 @@ export class RateLimiter {
     return null;
   }
 
+  /** Merge new rate limit settings into the current configuration. */
   updateConfig(config: Partial<RateLimitConfig>) {
     Object.assign(this.config, config);
   }
 
+  /** Return current rate limiter statistics: active windows and their usage counts. */
   getStats(): { activeWindows: number; entries: { key: string; count: number; limit: number }[] } {
     const now = Date.now();
     const entries: { key: string; count: number; limit: number }[] = [];
@@ -102,6 +120,7 @@ export class RateLimiter {
     return removed;
   }
 
+  /** Clear all rate limit windows, resetting every counter to zero. */
   reset() {
     this.windows.clear();
   }
