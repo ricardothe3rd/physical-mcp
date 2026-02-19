@@ -5,12 +5,14 @@
 
 import type { GeofenceBounds, SafetyViolation } from './types.js';
 
+/** A 3D position in meters, typically in the robot's reference frame. */
 export interface Position {
   x: number;
   y: number;
   z: number;
 }
 
+/** A cylindrical geofence defined by a center point, radius, and vertical bounds. */
 export interface CircularGeofence {
   centerX: number;
   centerY: number;
@@ -21,6 +23,9 @@ export interface CircularGeofence {
 
 /**
  * Check if a position is within rectangular geofence bounds.
+ * @param position - The 3D position to check
+ * @param bounds - The axis-aligned bounding box defining the allowed region
+ * @returns A geofence violation if outside bounds, or null if inside
  */
 export function checkGeofence(position: Position, bounds: GeofenceBounds): SafetyViolation | null {
   const violations: string[] = [];
@@ -48,7 +53,10 @@ export function checkGeofence(position: Position, bounds: GeofenceBounds): Safet
 }
 
 /**
- * Check if a position is within a circular geofence.
+ * Check if a position is within a circular (cylindrical) geofence.
+ * @param position - The 3D position to check
+ * @param fence - The circular geofence definition (center, radius, z bounds)
+ * @returns A geofence violation if outside the fence, or null if inside
  */
 export function checkCircularGeofence(position: Position, fence: CircularGeofence): SafetyViolation | null {
   const dx = position.x - fence.centerX;
@@ -76,10 +84,12 @@ export function checkCircularGeofence(position: Position, fence: CircularGeofenc
   return null;
 }
 
+/** Convenience check: returns true if the position is inside the rectangular geofence. */
 export function isInsideGeofence(position: Position, bounds: GeofenceBounds): boolean {
   return checkGeofence(position, bounds) === null;
 }
 
+/** Convenience check: returns true if the position is inside the circular geofence. */
 export function isInsideCircularGeofence(position: Position, fence: CircularGeofence): boolean {
   return checkCircularGeofence(position, fence) === null;
 }
