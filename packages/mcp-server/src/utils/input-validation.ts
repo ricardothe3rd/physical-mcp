@@ -88,6 +88,34 @@ export function validateActionName(name: string): ValidationResult {
 }
 
 /**
+ * Validates a ROS2 node name.
+ * Same rules as topic names (must start with `/`, valid segments, etc.).
+ */
+export function validateNodeName(name: string): ValidationResult {
+  return validateRos2Name(name, 'Node');
+}
+
+/**
+ * Validates a ROS2 parameter name.
+ * Must be a non-empty string containing only alphanumeric characters,
+ * underscores, and dots (for nested parameters).
+ */
+export function validateParamName(name: string): ValidationResult {
+  if (typeof name !== 'string' || name.length === 0) {
+    return { valid: false, error: 'Parameter name must be a non-empty string' };
+  }
+
+  if (/[^a-zA-Z0-9_.]/.test(name)) {
+    return {
+      valid: false,
+      error: `Parameter name '${name}' contains invalid characters — only alphanumeric, underscores, and dots are allowed`,
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
  * Validates a message payload.
  * Must be a non-null, non-array plain object.
  */
