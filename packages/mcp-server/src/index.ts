@@ -44,6 +44,7 @@ import { getDescriptionTools, handleDescriptionTool } from './tools/description-
 import { getCameraTools, handleCameraTool } from './tools/camera-tools.js';
 import { getMapTools, handleMapTool } from './tools/map-tools.js';
 import { getHistoryTools, handleHistoryTool } from './tools/history-tools.js';
+import { getPathTools, handlePathTool } from './tools/path-tools.js';
 
 // --- CLI argument parsing ---
 function parseArgs(): { bridgeUrl: string; policyPath?: string; verbose: boolean } {
@@ -152,6 +153,7 @@ const allTools = [
   ...getCameraTools(),
   ...getMapTools(),
   ...getHistoryTools(),
+  ...getPathTools(),
 ];
 
 // Tool name -> category mapping for dispatch
@@ -178,6 +180,7 @@ const descriptionToolNames = new Set(getDescriptionTools().map(t => t.name));
 const cameraToolNames = new Set(getCameraTools().map(t => t.name));
 const mapToolNames = new Set(getMapTools().map(t => t.name));
 const historyToolNames = new Set(getHistoryTools().map(t => t.name));
+const pathToolNames = new Set(getPathTools().map(t => t.name));
 
 // List tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -277,6 +280,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
     if (historyToolNames.has(name)) {
       return await handleHistoryTool(name, toolArgs);
+    }
+    if (pathToolNames.has(name)) {
+      return await handlePathTool(name, toolArgs, connection, safety);
     }
 
     return {
