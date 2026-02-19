@@ -10,6 +10,8 @@ import { getSafetyTools, handleSafetyTool } from './safety-tools.js';
 import { getSystemTools } from './system-tools.js';
 import { getBatchTools } from './batch-tools.js';
 import { getRecordingTools } from './recording-tools.js';
+import { getConditionalTools } from './conditional-tools.js';
+import { getScheduledTools } from './scheduled-tools.js';
 import { PolicyEngine } from '../safety/policy-engine.js';
 
 // Create a simple mock object instead of mocking the module
@@ -83,6 +85,8 @@ describe('Tool Definitions', () => {
       ...getSystemTools(),
       ...getBatchTools(),
       ...getRecordingTools(),
+      ...getConditionalTools(),
+      ...getScheduledTools(),
     ];
     const names = allTools.map(t => t.name);
     const uniqueNames = new Set(names);
@@ -98,6 +102,8 @@ describe('Tool Definitions', () => {
       ...getSystemTools(),
       ...getBatchTools(),
       ...getRecordingTools(),
+      ...getConditionalTools(),
+      ...getScheduledTools(),
     ];
     for (const tool of allTools) {
       expect(tool.description).toBeTruthy();
@@ -114,6 +120,8 @@ describe('Tool Definitions', () => {
       ...getSystemTools(),
       ...getBatchTools(),
       ...getRecordingTools(),
+      ...getConditionalTools(),
+      ...getScheduledTools(),
     ];
     for (const tool of allTools) {
       expect(tool.inputSchema).toBeDefined();
@@ -121,7 +129,22 @@ describe('Tool Definitions', () => {
     }
   });
 
-  it('total tool count is 40', () => {
+  it('conditional tools have correct count', () => {
+    const tools = getConditionalTools();
+    expect(tools.length).toBe(2);
+    expect(tools.map(t => t.name)).toContain('ros2_conditional_execute');
+    expect(tools.map(t => t.name)).toContain('ros2_wait_for_condition');
+  });
+
+  it('scheduled tools have correct count', () => {
+    const tools = getScheduledTools();
+    expect(tools.length).toBe(3);
+    expect(tools.map(t => t.name)).toContain('ros2_schedule_command');
+    expect(tools.map(t => t.name)).toContain('ros2_schedule_cancel');
+    expect(tools.map(t => t.name)).toContain('ros2_schedule_list');
+  });
+
+  it('total tool count is 48', () => {
     const total =
       getTopicTools().length +
       getServiceTools().length +
@@ -129,8 +152,10 @@ describe('Tool Definitions', () => {
       getSafetyTools().length +
       getSystemTools().length +
       getBatchTools().length +
-      getRecordingTools().length;
-    expect(total).toBe(43);
+      getRecordingTools().length +
+      getConditionalTools().length +
+      getScheduledTools().length;
+    expect(total).toBe(48);
   });
 });
 
