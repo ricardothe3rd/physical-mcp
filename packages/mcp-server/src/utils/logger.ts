@@ -1,84 +1,114 @@
 /**
- * Configurable logger with log levels and optional JSON output.
+ * Structured logger for PhysicalMCP.
+ *
+ * Supports both human-readable and JSON output formats.
+ * All output goes to stderr (stdout is reserved for MCP protocol).
  */
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-const LEVEL_ORDER: Record<LogLevel, number> = {
+const LOG_LEVELS: Record<LogLevel, number> = {
   debug: 0,
   info: 1,
   warn: 2,
   error: 3,
 };
 
-export interface LoggerOptions {
+export interface LogEntry {
+  timestamp: string;
   level: LogLevel;
-  json: boolean;
-  prefix: string;
+  component: string;
+  message: string;
+  data?: Record<string, unknown>;
+}
+
+export interface LoggerOptions {
+  level?: LogLevel;
+  format?: 'text' | 'json';
+  component?: string;
 }
 
 export class Logger {
   private level: number;
-  private json: boolean;
-  private prefix: string;
+  private format: 'text' | 'json';
+  private component: string;
+  private output: (msg: string) => void;
 
-  constructor(options: Partial<LoggerOptions> = {}) {
-    this.level = LEVEL_ORDER[options.level || 'info'];
-    this.json = options.json || false;
-    this.prefix = options.prefix || 'PhysicalMCP';
+  constructor(options: LoggerOptions = {}) {
+    this.level = LOG_LEVELS[options.level ?? 'info'];
+    this.format = options.format ?? 'text';
+    this.component = options.component ?? 'PhysicalMCP';
+    this.output = (msg: string) => process.stderr.write(msg + '\n');
   }
 
-  private shouldLog(level: LogLevel): boolean {
-    return LEVEL_ORDER[level] >= this.level;
+  /** Create a child logger with a specific component name */
+  child(component: string): Logger {
+    const child = new Logger({
+      level: this.getLevelName(),
+      format: this.format,
+      component,
+    });
+    child.output = this.output;
+    return child;
   }
 
-  private format(level: LogLevel, component: string, message: string, data?: Record<string, unknown>): string {
-    if (this.json) {
-      return JSON.stringify({
-        timestamp: new Date().toISOString(),
-        level,
-        component,
-        message,
-        ...data,
-      });
+  /** Set the output function (useful for testing) */
+  setOutput(fn: (msg: string) => void): void {
+    this.output = fn;
+  }
+
+  /** Get current level name */
+  getLevelName(): LogLevel {
+    for (const [name, val] of Object.entries(LOG_LEVELS)) {
+      if (val === this.level) return name as LogLevel;
     }
-    const tag = `[${this.prefix}:${component}]`;
-    const dataStr = data ? ` ${JSON.stringify(data)}` : '';
-    return `${tag} ${message}${dataStr}`;
+    return 'info';
   }
 
-  debug(component: string, message: string, data?: Record<string, unknown>): void {
-    if (this.shouldLog('debug')) {
-      console.error(this.format('debug', component, message, data));
-    }
-  }
-
-  info(component: string, message: string, data?: Record<string, unknown>): void {
-    if (this.shouldLog('info')) {
-      console.error(this.format('info', component, message, data));
-    }
-  }
-
-  warn(component: string, message: string, data?: Record<string, unknown>): void {
-    if (this.shouldLog('warn')) {
-      console.error(this.format('warn', component, message, data));
-    }
-  }
-
-  error(component: string, message: string, data?: Record<string, unknown>): void {
-    if (this.shouldLog('error')) {
-      console.error(this.format('error', component, message, data));
-    }
-  }
-
+  /** Set the minimum log level */
   setLevel(level: LogLevel): void {
-    this.level = LEVEL_ORDER[level];
+    this.level = LOG_LEVELS[level];
   }
 
-  setJson(json: boolean): void {
-    this.json = json;
+  debug(message: string, data?: Record<string, unknown>): void {
+    this.log('debug', message, data);
+  }
+
+  info(message: string, data?: Record<string, unknown>): void {
+    this.log('info', message, data);
+  }
+
+  warn(message: string, data?: Record<string, unknown>): void {
+    this.log('warn', message, data);
+  }
+
+  error(message: string, data?: Record<string, unknown>): void {
+    this.log('error', message, data);
+  }
+
+  private log(level: LogLevel, message: string, data?: Record<string, unknown>): void {
+    if (LOG_LEVELS[level] < this.level) return;
+
+    const entry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      level,
+      component: this.component,
+      message,
+      ...(data && Object.keys(data).length > 0 ? { data } : {}),
+    };
+
+    if (this.format === 'json') {
+      this.output(JSON.stringify(entry));
+    } else {
+      const prefix = `[${this.component}]`;
+      const levelTag = level.toUpperCase().padEnd(5);
+      const dataStr = data && Object.keys(data).length > 0
+        ? ' ' + JSON.stringify(data)
+        : '';
+      this.output(`${prefix} ${levelTag} ${message}${dataStr}`);
+    }
   }
 }
 
-/** Global logger instance. */
+/** Default global logger instance */
 export const logger = new Logger();
