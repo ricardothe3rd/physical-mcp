@@ -1,103 +1,152 @@
 <div align="center">
 
-# PhysicalMCP
+<img src="assets/banner.svg" alt="PhysicalMCP" width="100%">
 
-### The safety layer between AI agents and real robots
+<br />
+<br />
 
-[![CI](https://github.com/ricardothe3rd/physical-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/ricardothe3rd/physical-mcp/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/@ricardothe3rd/physical-mcp)](https://www.npmjs.com/package/@ricardothe3rd/physical-mcp)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-2167%20passing-brightgreen)](https://github.com/ricardothe3rd/physical-mcp)
-[![Tools](https://img.shields.io/badge/MCP%20tools-100-blueviolet)](https://github.com/ricardothe3rd/physical-mcp)
+**The safety layer between AI agents and real robots.**
 
-**100 MCP tools** | **25 safety modules** | **2167 tests** | **Zero unsafe commands reach your robot**
+[![npm](https://img.shields.io/npm/v/@ricardothe3rd/physical-mcp?style=flat-square&color=22c55e)](https://www.npmjs.com/package/@ricardothe3rd/physical-mcp)
+[![CI](https://github.com/ricardothe3rd/physical-mcp/actions/workflows/ci.yml/badge.svg?style=flat-square)](https://github.com/ricardothe3rd/physical-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![ROS2](https://img.shields.io/badge/ROS2-Humble-22314E?style=flat-square&logo=ros&logoColor=white)](https://docs.ros.org/en/humble/)
+[![Tests](https://img.shields.io/badge/tests-2167%20passing-brightgreen?style=flat-square)](https://github.com/ricardothe3rd/physical-mcp)
+[![Tools](https://img.shields.io/badge/MCP%20tools-100-blueviolet?style=flat-square)](https://github.com/ricardothe3rd/physical-mcp)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://makeapullrequest.com)
 
-[Quick Start](#quick-start) | [Why PhysicalMCP?](#why-physicalmcp) | [Safety Layer](#safety-layer) | [All Tools](#mcp-tools-100)
+[Quick Start](#-quick-start) &middot; [Why PhysicalMCP?](#-why-physicalmcp) &middot; [Safety Layer](#-safety-layer) &middot; [All 100 Tools](#-mcp-tools-100) &middot; [Architecture](#-architecture)
 
 </div>
 
 ---
 
-Bridge any AI agent (Claude, GPT, Gemini, local LLMs) to any ROS2 robot with built-in velocity limits, geofence boundaries, emergency stop, rate limiting, and full audit logging. Every command is safety-checked **before** it reaches your robot.
+<br />
+
+> [!WARNING]
+> PhysicalMCP controls **real hardware**. Always start with conservative safety limits and test thoroughly in simulation before deploying to physical robots.
+
+<br />
+
+## What Is This?
+
+Bridge any AI agent — Claude, GPT, Gemini, local LLMs — to any ROS2 robot with built-in **velocity limits**, **geofence boundaries**, **emergency stop**, **rate limiting**, **deadman switch**, and **full audit logging**. Every single command is safety-checked **before** it reaches your robot.
 
 ```bash
 npx @ricardothe3rd/physical-mcp
 ```
 
-## Table of Contents
+That's it. One command. 100 MCP tools. Zero unsafe commands reach your robot.
 
-- [Why PhysicalMCP?](#why-physicalmcp)
-- [What It Looks Like](#what-it-looks-like)
-- [Architecture](#architecture)
-- [Quick Start](#quick-start)
-- [MCP Tools (100)](#mcp-tools-100)
-- [Safety Layer](#safety-layer)
-- [Configuration](#configuration)
-- [Development](#development)
-- [Requirements](#requirements)
-- [FAQ & Troubleshooting](#faq)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Why PhysicalMCP?
-
-Existing MCP-to-ROS2 bridges let AI agents send raw commands to robots with zero guardrails. That's fine for simulation — dangerous for real hardware.
-
-PhysicalMCP enforces a safety layer **before** any command reaches your robot:
-
-| Feature | PhysicalMCP | robotmcp | wise-vision-mcp |
-|---------|:-----------:|:--------:|:----------------:|
-| Velocity limits | Yes | No | No |
-| Geofence boundaries | Yes | No | No |
-| Emergency stop | Yes | No | No |
-| Rate limiting | Yes | No | No |
-| Audit logging | Yes | No | No |
-| Blocked topics/services | Yes | No | No |
-| YAML policy configs | Yes | No | No |
-| Acceleration limits | Yes | No | No |
-| Per-topic velocity limits | Yes | No | No |
-| Command approval (human-in-loop) | Yes | No | No |
-| Safety score tracking | Yes | No | No |
-| Deadman switch | Yes | No | No |
-| Batch command execution | Yes | No | No |
-| Topic recording | Yes | No | No |
-| Fleet management | Yes | No | No |
-| Path planning tools | Yes | No | No |
-| Camera/sensor tools | Yes | No | No |
-| MCP tools | **100** | 8 | 5 |
-| Tests | **2167** | ~50 | ~20 |
-| ROS2 full coverage | Yes | Yes | Partial |
+<br />
 
 ## What It Looks Like
 
 ```
 You: "Move the robot forward slowly"
 Claude → ros2_topic_publish(topic=/cmd_vel, msg={linear: {x: 0.15}})
-✅ Safety check PASSED → Published to /cmd_vel
+ ✅ Safety check PASSED → Published to /cmd_vel
 
 You: "Go full speed, 10 m/s!"
 Claude → ros2_topic_publish(topic=/cmd_vel, msg={linear: {x: 10.0}})
-🛑 BLOCKED: Linear velocity 10.00 m/s exceeds limit of 0.5 m/s
-   → Command never reaches the robot. Logged to audit trail.
+ 🛑 BLOCKED: Linear velocity 10.00 m/s exceeds limit of 0.5 m/s
+    → Command never reaches the robot. Logged to audit trail.
 
 You: "Emergency stop!"
 Claude → safety_emergency_stop(reason="Manual activation")
-🔴 E-STOP ACTIVE → Zero velocity sent. All commands blocked.
-   → Release requires explicit "CONFIRM_RELEASE" string.
+ 🔴 E-STOP ACTIVE → Zero velocity sent. All commands blocked.
+    → Release requires explicit "CONFIRM_RELEASE" string.
 ```
 
 Every command — allowed or blocked — is recorded in the audit trail with timestamps, violations, and full context.
 
-## Architecture
+<br />
+
+## Why PhysicalMCP?
+
+Existing MCP-to-ROS2 bridges let AI agents send raw commands to robots with **zero guardrails**. That's fine for simulation — dangerous for real hardware.
+
+PhysicalMCP enforces a safety layer **before** any command reaches your robot:
+
+| Feature | PhysicalMCP | robotmcp | wise-vision-mcp |
+|:--------|:-----------:|:--------:|:----------------:|
+| Velocity limits | :white_check_mark: | :x: | :x: |
+| Geofence boundaries | :white_check_mark: | :x: | :x: |
+| Emergency stop | :white_check_mark: | :x: | :x: |
+| Rate limiting | :white_check_mark: | :x: | :x: |
+| Audit logging | :white_check_mark: | :x: | :x: |
+| Blocked topics/services | :white_check_mark: | :x: | :x: |
+| YAML policy configs | :white_check_mark: | :x: | :x: |
+| Acceleration limits | :white_check_mark: | :x: | :x: |
+| Per-topic velocity limits | :white_check_mark: | :x: | :x: |
+| Command approval (human-in-loop) | :white_check_mark: | :x: | :x: |
+| Safety score tracking | :white_check_mark: | :x: | :x: |
+| Deadman switch | :white_check_mark: | :x: | :x: |
+| Batch command execution | :white_check_mark: | :x: | :x: |
+| Topic recording | :white_check_mark: | :x: | :x: |
+| Fleet management | :white_check_mark: | :x: | :x: |
+| Path planning tools | :white_check_mark: | :x: | :x: |
+| Camera/sensor tools | :white_check_mark: | :x: | :x: |
+| **MCP tools** | **100** | 8 | 5 |
+| **Tests** | **2167** | ~50 | ~20 |
+| ROS2 full coverage | :white_check_mark: | :white_check_mark: | Partial |
+
+<br />
+
+## :rocket: Quick Start
+
+### 1. Start the simulation + bridge
+
+```bash
+cd docker
+docker compose up
+```
+
+This launches a **Gazebo simulation** with TurtleBot3 and the ROS2 bridge on port 9090.
+
+### 2. Add PhysicalMCP to Claude
+
+```bash
+claude mcp add physical-mcp -- npx @ricardothe3rd/physical-mcp
+```
+
+### 3. Talk to your robot
+
+Ask Claude things like:
+- *"List all ROS2 topics"*
+- *"What's the robot's current pose?"*
+- *"Move the robot forward at 0.1 m/s"*
+- *"Show me the safety status"*
+- *"Activate emergency stop"*
+
+> [!TIP]
+> For Claude Desktop, add PhysicalMCP to your `claude_desktop_config.json`:
+> ```json
+> {
+>   "mcpServers": {
+>     "physical-mcp": {
+>       "command": "npx",
+>       "args": ["@ricardothe3rd/physical-mcp"],
+>       "env": {
+>         "PHYSICAL_MCP_BRIDGE_URL": "ws://localhost:9090",
+>         "PHYSICAL_MCP_POLICY": "/path/to/my-policy.yaml"
+>       }
+>     }
+>   }
+> }
+> ```
+
+<br />
+
+## :building_construction: Architecture
 
 ```
 ┌──────────────┐              ┌────────────────────────────────────────┐
 │   AI Agent   │◄────────────►│       MCP Server (TypeScript)          │
 │  (Claude,    │  MCP         │                                        │
 │  GPT, etc.)  │  protocol    │  ┌──────────────────────────────────┐  │
-└──────────────┘              │  │           Safety Layer           │  │
+└──────────────┘              │  │        ⛨  Safety Layer           │  │
                               │  │                                  │  │
                               │  │   ┌──────────┐  ┌────────────┐   │  │
                               │  │   │ Velocity │  │  Geofence  │   │  │
@@ -129,34 +178,151 @@ Every command — allowed or blocked — is recorded in the audit trail with tim
 
 The safety layer sits in the TypeScript MCP server and evaluates **every** publish, service call, and action goal before it reaches the bridge. The Python bridge has a secondary emergency stop as an additional fail-safe.
 
-## Quick Start
+<br />
 
-### 1. Start the simulation + bridge
+## :shield: Safety Layer
 
-```bash
-cd docker
-docker compose up
+Every command that could move or affect the robot passes through the policy engine. Here's every safety mechanism available:
+
+### Dual-Layer Emergency Stop
+
+The most critical safety feature. Two independent layers ensure the robot stops:
+
+1. **Primary (TypeScript):** Blocks all publish/service/action commands at the MCP server level
+2. **Secondary (Python):** Bridge-level e-stop publishes zero velocity to `/cmd_vel` and cancels all active action goals
+
+Releasing requires the explicit string `CONFIRM_RELEASE` to prevent accidental resumption.
+
+### Velocity Limits
+
+Caps linear and angular velocity on any `geometry_msgs/msg/Twist` message:
+
+```yaml
+velocity:
+  linearMax: 0.5   # m/s (default)
+  angularMax: 1.5  # rad/s (default)
 ```
 
-This launches a Gazebo simulation with TurtleBot3 and the ROS2 bridge on port 9090.
+Commands above the limit are **blocked** and logged. Optionally, enable **clamp mode** to scale velocities down to the maximum while preserving direction:
 
-### 2. Add PhysicalMCP to Claude
-
-```bash
-claude mcp add physical-mcp -- npx @ricardothe3rd/physical-mcp
+```yaml
+velocity:
+  linearMax: 0.22
+  clampMode: true   # reduce to max instead of blocking
 ```
 
-### 3. Talk to your robot
+### Per-Topic Velocity Limits
 
-Ask Claude things like:
-- "List all ROS2 topics"
-- "What's the robot's current pose?"
-- "Move the robot forward at 0.1 m/s"
-- "Show me the safety status"
-- "Activate emergency stop"
+Different speed limits for different robots or joints:
 
+```yaml
+topicVelocityOverrides:
+  - topic: /arm/cmd_vel
+    linearMax: 0.1        # Arm moves slowly
+    angularMax: 0.5
+  - topic: /base/cmd_vel
+    linearMax: 1.0        # Base can go faster
+```
 
-## MCP Tools (100)
+### Acceleration Limits
+
+Prevent jerky motion by limiting how fast velocity can change:
+
+```yaml
+acceleration:
+  enabled: true
+  linearMaxAccel: 1.0    # m/s²
+  angularMaxAccel: 3.0   # rad/s²
+```
+
+### Geofence Boundaries
+
+Define the workspace the robot must stay within:
+
+```yaml
+geofence:
+  xMin: -5.0
+  xMax: 5.0
+  yMin: -5.0
+  yMax: 5.0
+  zMin: 0.0
+  zMax: 2.0
+```
+
+Add **proximity warnings** before hitting the boundary:
+
+```yaml
+geofenceWarningMargin: 1.0  # warn within 1m of boundary
+```
+
+### Rate Limiting
+
+Prevents flooding the ROS2 graph:
+
+```yaml
+rateLimits:
+  publishHz: 10          # max publishes per second
+  servicePerMinute: 60   # max service calls per minute
+  actionPerMinute: 30    # max action goals per minute
+```
+
+### Blocked Topics & Services
+
+Prevent access to sensitive system resources:
+
+```yaml
+blockedTopics:
+  - /rosout
+  - /parameter_events
+
+blockedServices:
+  - /kill
+  - /shutdown
+```
+
+### Deadman Switch
+
+Auto-activates emergency stop if no heartbeat is received within the timeout:
+
+```yaml
+deadmanSwitch:
+  enabled: true
+  timeoutMs: 30000   # 30 seconds
+```
+
+Call `safety_heartbeat` periodically. If the AI agent disconnects, the deadman switch stops the robot automatically.
+
+### Command Approval (Human-in-the-Loop)
+
+Require explicit human approval before executing dangerous commands:
+
+```yaml
+commandApproval:
+  enabled: true
+  requireApprovalFor:
+    - ros2_topic_publish
+    - ros2_action_send_goal
+  pendingTimeout: 30000   # 30s before approval expires
+```
+
+### Safety Score
+
+Track how "safe" an AI agent session has been:
+
+- **Score:** 0–100 (100 = all commands allowed, 0 = all blocked)
+- **Block rate:** Percentage of commands blocked
+- **Violations by type:** Breakdown of what went wrong
+- **Session duration:** How long the session has been running
+
+Check with `safety_status`.
+
+### Audit Logging
+
+Every command is logged with timestamp, unique ID, command type, target, safety check result (allowed/blocked), violation details, and execution result. Query with `safety_audit_log` or export to JSON with `safety_export_audit_log`.
+
+<br />
+
+## :wrench: MCP Tools (100)
 
 100 tools across 25 categories. Every publish, service call, and action goal passes through the safety layer.
 
@@ -410,177 +576,14 @@ Ask Claude things like:
 | `ros2_robot_joints` | Get joint names and states |
 </details>
 
-## Safety Layer
+<br />
 
-Every command that could move or affect the robot passes through the policy engine.
-
-### Velocity Limits
-
-Caps linear and angular velocity on any `geometry_msgs/msg/Twist` message:
-
-```yaml
-velocity:
-  linearMax: 0.5   # m/s (default)
-  angularMax: 1.5  # rad/s (default)
-```
-
-If an AI agent tries to publish a velocity above the limit, the command is **blocked** and the violation is logged.
-
-### Geofence
-
-Defines the workspace boundaries the robot must stay within:
-
-```yaml
-geofence:
-  xMin: -5.0
-  xMax: 5.0
-  yMin: -5.0
-  yMax: 5.0
-  zMin: 0.0
-  zMax: 2.0
-```
-
-### Rate Limiting
-
-Prevents flooding the ROS2 graph with too many commands:
-
-```yaml
-rateLimits:
-  publishHz: 10          # max publishes per second
-  servicePerMinute: 60   # max service calls per minute
-  actionPerMinute: 30    # max action goals per minute
-```
-
-### Blocked Topics & Services
-
-Prevents access to sensitive system topics:
-
-```yaml
-blockedTopics:
-  - /rosout
-  - /parameter_events
-
-blockedServices:
-  - /kill
-  - /shutdown
-```
-
-### Velocity Clamping
-
-Instead of blocking over-limit velocities, clamp mode scales them down to the maximum while preserving direction:
-
-```yaml
-velocity:
-  linearMax: 0.22
-  clampMode: true   # reduce to max instead of blocking
-```
-
-Toggle at runtime with `safety_set_clamp_mode`.
-
-### Deadman Switch
-
-Auto-activates emergency stop if no heartbeat is received within the timeout:
-
-```yaml
-deadmanSwitch:
-  enabled: true
-  timeoutMs: 30000   # 30 seconds
-```
-
-Call `safety_heartbeat` periodically to keep the robot active. If the AI agent disconnects, the deadman switch stops the robot automatically.
-
-### Acceleration Limits
-
-Prevent jerky motion by limiting how fast velocity can change:
-
-```yaml
-acceleration:
-  enabled: true
-  linearMaxAccel: 1.0    # m/s²
-  angularMaxAccel: 3.0   # rad/s²
-```
-
-When enabled, the engine tracks velocity over time and blocks commands that would require acceleration beyond the configured limits.
-
-### Geofence Proximity Warnings
-
-Get warned before hitting the boundary:
-
-```yaml
-geofenceWarningMargin: 1.0  # warn within 1m of boundary
-```
-
-Use `safety_check_position` to check any position against the geofence and get both violation status and proximity warnings.
-
-### Emergency Stop
-
-Dual-layer emergency stop:
-
-1. **Primary (TypeScript):** Blocks all publish/service/action commands at the MCP server
-2. **Secondary (Python):** Bridge-level e-stop publishes zero velocity to `/cmd_vel` and cancels all active action goals
-
-Releasing requires explicit confirmation (`CONFIRM_RELEASE`) to prevent accidental resumption.
-
-### Per-Topic Velocity Limits
-
-Different speed limits for different robots or joints:
-
-```yaml
-topicVelocityOverrides:
-  - topic: /arm/cmd_vel
-    linearMax: 0.1        # Arm moves slowly
-    angularMax: 0.5
-  - topic: /base/cmd_vel
-    linearMax: 1.0        # Base can go faster
-```
-
-### Command Approval (Human-in-the-Loop)
-
-Require explicit human approval before executing dangerous commands:
-
-```yaml
-commandApproval:
-  enabled: true
-  requireApprovalFor:
-    - ros2_topic_publish
-    - ros2_action_send_goal
-  pendingTimeout: 30000   # 30s before approval expires
-```
-
-Use `safety_approval_list` to see pending requests, and `safety_approval_approve` or `safety_approval_deny` to resolve them.
-
-### Safety Score
-
-Track how "safe" an AI agent session has been:
-
-- **Score:** 0-100 (100 = all commands allowed, 0 = all blocked)
-- **Block rate:** Percentage of commands blocked
-- **Violations by type:** Breakdown of what went wrong
-- **Session duration:** How long the session has been running
-
-Check with `safety_status` — the `safetyScore` field shows the current snapshot.
-
-### Safety Events
-
-Subscribe to real-time safety events: violations, e-stop activations, policy changes. The event emitter provides both type-specific and catch-all listeners with automatic history.
-
-### Audit Logging
-
-Every command is logged with:
-- Timestamp and unique ID
-- Command type and target
-- Safety check result (allowed/blocked)
-- Violation details if blocked
-- Execution result
-
-Query the audit trail with `safety_audit_log` — filter by violations only, command type, or limit results.
-
-## Configuration
+## :gear: Configuration
 
 ### Environment Variables
 
 | Variable | Default | Description |
-|----------|---------|-------------|
+|:---------|:--------|:------------|
 | `PHYSICAL_MCP_BRIDGE_URL` | `ws://localhost:9090` | WebSocket URL for the ROS2 bridge |
 | `PHYSICAL_MCP_POLICY` | *(built-in defaults)* | Path to a YAML safety policy file |
 
@@ -624,28 +627,29 @@ Two built-in policies are included:
 - **`default.yaml`** — Conservative limits for any ROS2 robot
 - **`turtlebot3.yaml`** — Tuned for TurtleBot3 Burger in Gazebo (0.22 m/s linear, 2.84 rad/s angular)
 
-### Claude Desktop Configuration
+<br />
 
-Add to your Claude Desktop `claude_desktop_config.json`:
+## :dart: Tech Stack
 
-```json
-{
-  "mcpServers": {
-    "physical-mcp": {
-      "command": "npx",
-      "args": ["@ricardothe3rd/physical-mcp"],
-      "env": {
-        "PHYSICAL_MCP_BRIDGE_URL": "ws://localhost:9090",
-        "PHYSICAL_MCP_POLICY": "/path/to/my-policy.yaml"
-      }
-    }
-  }
-}
-```
+<p>
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/ROS2_Humble-22314E?style=for-the-badge&logo=ros&logoColor=white" alt="ROS2" />
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/WebSocket-010101?style=for-the-badge&logo=socketdotio&logoColor=white" alt="WebSocket" />
+  <img src="https://img.shields.io/badge/Gazebo-F58220?style=for-the-badge&logo=gazebo&logoColor=white" alt="Gazebo" />
+  <img src="https://img.shields.io/badge/Zod-3E67B1?style=for-the-badge&logo=zod&logoColor=white" alt="Zod" />
+  <img src="https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white" alt="Vitest" />
+  <img src="https://img.shields.io/badge/MCP_SDK-D97757?style=for-the-badge" alt="MCP SDK" />
+</p>
 
-## Development
+<br />
 
-### Project Structure
+## :open_file_folder: Project Structure
+
+<details>
+<summary><strong>Click to expand full tree</strong></summary>
 
 ```
 physical-mcp/
@@ -670,11 +674,20 @@ physical-mcp/
 │           ├── action_handler.py
 │           ├── telemetry.py     # Bridge health metrics
 │           └── msg_validator.py # Message type validation
-└── docker/
-    ├── docker-compose.yml       # Full stack (sim + bridge)
-    ├── Dockerfile.bridge        # ROS2 Humble + bridge
-    └── Dockerfile.sim           # Gazebo + TurtleBot3
+├── docker/
+│   ├── docker-compose.yml       # Full stack (sim + bridge)
+│   ├── Dockerfile.bridge        # ROS2 Humble + bridge
+│   └── Dockerfile.sim           # Gazebo + TurtleBot3
+├── resources/
+│   └── docs/                    # Guides, tutorials, API reference
+└── README.md
 ```
+
+</details>
+
+<br />
+
+## :hammer_and_wrench: Development
 
 ### Building
 
@@ -718,18 +731,24 @@ docker compose up --build
 # Gazebo sim launches with TurtleBot3 Burger
 ```
 
-## Requirements
+<br />
 
-- **MCP Server:** Node.js >= 18
-- **ROS2 Bridge:** Python >= 3.10, ROS2 Humble
-- **Docker:** Docker + Docker Compose (for simulation)
+## :package: Requirements
 
-## FAQ
+| Component | Requirement |
+|:----------|:------------|
+| **MCP Server** | Node.js >= 18 |
+| **ROS2 Bridge** | Python >= 3.10, ROS2 Humble |
+| **Docker** | Docker + Docker Compose (for simulation) |
+
+<br />
+
+## :question: FAQ
 
 <details>
 <summary><strong>How is this different from robotmcp?</strong></summary>
 
-robotmcp and other MCP-ROS2 bridges pass commands directly to the robot with no safety checks. PhysicalMCP adds a full safety layer (velocity limits, geofence, rate limiting, e-stop, audit logging) that evaluates every command before it reaches the robot. See the [comparison table](#why-physicalmcp).
+robotmcp and other MCP-ROS2 bridges pass commands directly to the robot with no safety checks. PhysicalMCP adds a full safety layer (velocity limits, geofence, rate limiting, e-stop, audit logging) that evaluates every command before it reaches the robot. See the [comparison table](#-why-physicalmcp).
 </details>
 
 <details>
@@ -762,23 +781,29 @@ Yes. Set `PHYSICAL_MCP_POLICY` to point at a YAML file with your robot-specific 
 Not through the MCP interface. All publish, service, and action commands pass through the policy engine in the TypeScript server. The Python bridge has a secondary e-stop as an additional fail-safe. There is no "skip safety" flag.
 </details>
 
-<details>
-<summary><strong>Troubleshooting</strong> (click to expand)</summary>
+<br />
 
-### Bridge not connected
+## :rotating_light: Troubleshooting
+
+<details>
+<summary><strong>Bridge not connected</strong></summary>
 
 ```
 Bridge not connected. Start the ROS2 bridge and try again.
 Expected bridge at: ws://localhost:9090
 ```
 
-**Fix:** Make sure the Python bridge is running. If using Docker: `cd docker && docker compose up`. If running locally: `physical-mcp-bridge`. Check that port 9090 is not blocked by a firewall.
+Make sure the Python bridge is running. If using Docker: `cd docker && docker compose up`. If running locally: `physical-mcp-bridge`. Check that port 9090 is not blocked by a firewall.
+</details>
 
-### tsc build hangs
+<details>
+<summary><strong>tsc build hangs</strong></summary>
 
 If `npm run build` hangs, ensure you're using the version of the tool files with the `toInputSchema()` helper function. The `zodToJsonSchema` return type causes TypeScript type inference to loop when cast directly to `Tool['inputSchema']`.
+</details>
 
-### Docker Gazebo display issues
+<details>
+<summary><strong>Docker Gazebo display issues</strong></summary>
 
 If Gazebo doesn't show a window on macOS/Linux, you need X11 forwarding:
 
@@ -790,118 +815,60 @@ xhost +local:docker
 xhost +local:root
 ```
 
-### ROS2 topics not showing up
+For headless mode, set `GAZEBO_HEADLESS=1`.
+</details>
+
+<details>
+<summary><strong>ROS2 topics not showing up</strong></summary>
 
 If `ros2_topic_list` returns empty, the bridge may have started before the simulation. Restart the bridge after the simulation is fully loaded:
 
 ```bash
 docker compose restart bridge
 ```
+</details>
 
-### Safety violations blocking commands unexpectedly
+<details>
+<summary><strong>Safety violations blocking commands unexpectedly</strong></summary>
 
-If the safety layer is blocking commands you expect to succeed, check which policy is active:
+Check which policy is active by asking *"Show me the safety status"*. Look at the velocity limits and geofence boundaries. If they are too restrictive, either update them at runtime (*"Update the linear velocity limit to 1.0 m/s"*) or create a custom YAML policy file.
+</details>
 
-```
-You: "Show me the safety status"
-```
+<details>
+<summary><strong>WebSocket connection drops</strong></summary>
 
-Look at the velocity limits and geofence boundaries. If they are too restrictive for your use case, you can adjust them at runtime:
+1. Check network stability between the MCP server machine and bridge machine
+2. Check the bridge process is still running: `docker compose ps`
+3. If deadman switch is enabled, make sure `safety_heartbeat` is being called within `timeoutMs`
+4. The connection manager retries every 5 seconds with a circuit breaker — errors resolve once the bridge is back
+</details>
 
-```
-You: "Update the linear velocity limit to 1.0 m/s"
-```
+<details>
+<summary><strong>E-Stop won't release</strong></summary>
 
-Or create a custom YAML policy file with your desired limits and set `PHYSICAL_MCP_POLICY` to point at it. See the [Safety Layer](#safety-layer) section for all configurable options.
+E-stop release requires explicit confirmation: pass `confirm: true` with `CONFIRM_RELEASE`. If the bridge-level e-stop is active, restart the bridge container. Check the audit log for the original trigger: `safety_audit_log`.
+</details>
 
-### WebSocket connection drops
+<details>
+<summary><strong>Node.js version incompatibility</strong></summary>
 
-If you see frequent disconnections between the MCP server and the ROS2 bridge:
+PhysicalMCP uses modern JavaScript features (optional chaining, top-level await, ES modules) that require Node.js 18+. Check with `node --version` and upgrade using [nvm](https://github.com/nvm-sh/nvm) if needed.
+</details>
 
-1. **Check network stability** between the machine running the MCP server and the machine running the bridge.
-2. **Check the bridge process** is still running: `docker compose ps` (if using Docker) or check the process directly.
-3. **Deadman switch timeout**: If you have the deadman switch enabled, make sure `safety_heartbeat` is being called within the configured `timeoutMs`. If the heartbeat lapses, the system activates emergency stop and the bridge may appear unresponsive.
-4. **Increase reconnection tolerance**: The connection manager retries every 5 seconds with a circuit breaker. If the bridge takes longer to restart, you may see errors during the reconnection window. These resolve automatically once the bridge is back.
+<details>
+<summary><strong>Permission denied on Linux</strong></summary>
 
-### Permission denied on Linux
-
-If the bridge or Docker containers fail with permission errors on Linux:
-
-```
-PermissionError: [Errno 13] Permission denied
-```
-
-**Fix:** Do not run the bridge as root. Instead, add your user to the `docker` group:
+Do not run the bridge as root. Add your user to the `docker` group:
 
 ```bash
 sudo usermod -aG docker $USER
 newgrp docker
 ```
-
-For the ROS2 bridge running natively (not in Docker), ensure your user has access to the ROS2 workspace and DDS middleware. Some DDS implementations create shared-memory files in `/dev/shm` that require appropriate permissions.
-
-### Node.js version incompatibility
-
-```
-SyntaxError: Unexpected token '?.'
-```
-
-or
-
-```
-Error: PhysicalMCP requires Node.js >= 18
-```
-
-**Fix:** PhysicalMCP uses modern JavaScript features (optional chaining, top-level await, ES modules) that require Node.js 18 or later. Check your version:
-
-```bash
-node --version
-```
-
-If you are on an older version, upgrade using [nvm](https://github.com/nvm-sh/nvm):
-
-```bash
-nvm install 18
-nvm use 18
-```
-
-### Rate limit errors during normal use
-
-The default policy limits publishes to 10 Hz. If you're sending commands faster than that (e.g., in a control loop), either increase the limit in your policy YAML or use the `safety_update_velocity_limits` tool.
-
-### Bridge Connection Refused
-**Error:** `WebSocket connection failed: ECONNREFUSED`
-- Ensure the ROS2 bridge is running: `docker compose up bridge`
-- Check the bridge URL matches: default is `ws://localhost:9090`
-- Verify no firewall blocking port 9090
-
-### Docker: Gazebo Display Issues
-**Error:** `cannot open display` or blank Gazebo window
-- Set `DISPLAY` env var: `export DISPLAY=:0`
-- On macOS, install XQuartz and run `xhost +localhost`
-- For headless mode, set `GAZEBO_HEADLESS=1`
-
-### Safety Policy Not Loading
-**Error:** `Failed to load policy file`
-- Check the YAML syntax: `npx yaml-lint policies/default.yaml`
-- Ensure the file path is absolute or relative to the server working directory
-- Verify the policy structure matches the schema (see Safety Policy Guide)
-
-### E-Stop Won't Release
-**Behavior:** `safety_emergency_stop_release` returns error
-- E-stop release requires explicit confirmation: pass `confirm: true`
-- If bridge-level e-stop is active, restart the bridge container
-- Check audit log for the original e-stop trigger: `safety_audit_log`
-
-### High Latency Commands
-**Behavior:** Commands take >1 second
-- Check bridge connection: `system_bridge_status`
-- Verify Docker is not resource-starved: `docker stats`
-- Reduce rate limiter windows if they're too restrictive
-
 </details>
 
-## Contributing
+<br />
+
+## :handshake: Contributing
 
 Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
@@ -911,18 +878,56 @@ Areas where help is especially wanted:
 - Documentation improvements and tutorials
 - Bug reports from real hardware deployments
 
-## License
+<br />
 
-MIT - see [LICENSE](LICENSE) for details.
+## :page_facing_up: License
+
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for details.
+
+```
+MIT License
+
+Copyright (c) 2026 Ricardothe3rd
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ---
 
 <div align="center">
 
+<br />
+
 **PhysicalMCP** is the safety layer the robotics industry needs.
 
 If this project is useful to you, please consider giving it a star.
 
-[Report Bug](https://github.com/ricardothe3rd/physical-mcp/issues) | [Request Feature](https://github.com/ricardothe3rd/physical-mcp/issues) | [Sponsor](https://github.com/sponsors/ricardothe3rd)
+<br />
+
+**[Report Bug](https://github.com/ricardothe3rd/physical-mcp/issues)** &middot; **[Request Feature](https://github.com/ricardothe3rd/physical-mcp/issues)** &middot; **[Sponsor](https://github.com/sponsors/ricardothe3rd)**
+
+<sub>Built by <a href="https://github.com/ricardothe3rd">Ricardo Argana</a> with Claude</sub>
+
+<br />
+
+<a href="https://github.com/ricardothe3rd/physical-mcp">
+  <img src="https://img.shields.io/github/stars/ricardothe3rd/physical-mcp?style=social" alt="Stars" />
+</a>
 
 </div>

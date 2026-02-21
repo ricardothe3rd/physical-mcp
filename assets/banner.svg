@@ -1,0 +1,289 @@
+<svg fill="none" viewBox="0 0 1200 400" width="1200" height="400" xmlns="http://www.w3.org/2000/svg">
+  <foreignObject width="100%" height="100%">
+    <div xmlns="http://www.w3.org/1999/xhtml">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        .scene {
+          width: 1200px;
+          height: 400px;
+          background: linear-gradient(135deg, #020614 0%, #0a1628 30%, #0d1f3c 60%, #020614 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          overflow: hidden;
+          font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        /* Animated grid floor */
+        .grid {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 180px;
+          background-size: 50px 50px;
+          background-image:
+            linear-gradient(rgba(34, 197, 94, 0.06) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(34, 197, 94, 0.06) 1px, transparent 1px);
+          transform: perspective(500px) rotateX(50deg);
+          transform-origin: bottom;
+          animation: gridScroll 6s linear infinite;
+        }
+        @keyframes gridScroll {
+          0% { background-position: 0 0; }
+          100% { background-position: 50px 50px; }
+        }
+
+        /* Scanning line */
+        .scan-line {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, rgba(34, 197, 94, 0.6), transparent);
+          animation: scan 4s ease-in-out infinite;
+        }
+        @keyframes scan {
+          0% { top: 0; opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
+
+        .content {
+          position: relative;
+          z-index: 2;
+          text-align: center;
+        }
+
+        /* Logo */
+        .logo {
+          display: inline-flex;
+          align-items: center;
+          gap: 18px;
+          margin-bottom: 14px;
+        }
+        .shield {
+          width: 60px;
+          height: 60px;
+          border-radius: 16px;
+          background: linear-gradient(135deg, #22c55e, #16a34a);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 28px;
+          box-shadow: 0 0 40px rgba(34, 197, 94, 0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+          animation: shieldPulse 3s ease-in-out infinite;
+          position: relative;
+        }
+        .shield::after {
+          content: '';
+          position: absolute;
+          inset: -3px;
+          border-radius: 19px;
+          border: 2px solid rgba(34, 197, 94, 0.3);
+          animation: shieldRing 3s ease-in-out infinite;
+        }
+        @keyframes shieldPulse {
+          0%, 100% { box-shadow: 0 0 30px rgba(34, 197, 94, 0.4); }
+          50% { box-shadow: 0 0 60px rgba(34, 197, 94, 0.7); }
+        }
+        @keyframes shieldRing {
+          0%, 100% { border-color: rgba(34, 197, 94, 0.3); transform: scale(1); }
+          50% { border-color: rgba(34, 197, 94, 0.6); transform: scale(1.05); }
+        }
+        .shield-icon {
+          font-size: 30px;
+          color: white;
+          font-weight: 900;
+          line-height: 1;
+        }
+
+        .title {
+          font-size: 50px;
+          font-weight: 800;
+          background: linear-gradient(135deg, #ffffff 0%, #86efac 50%, #22c55e 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          letter-spacing: -1px;
+        }
+
+        .subtitle {
+          font-size: 17px;
+          color: rgba(255, 255, 255, 0.45);
+          margin-bottom: 30px;
+          font-weight: 400;
+          letter-spacing: 0.5px;
+        }
+
+        /* Safety modules row */
+        .modules {
+          display: flex;
+          gap: 20px;
+          justify-content: center;
+        }
+        .module {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          animation: moduleFloat 5s ease-in-out infinite;
+        }
+        .module:nth-child(1) { animation-delay: 0s; }
+        .module:nth-child(2) { animation-delay: 0.5s; }
+        .module:nth-child(3) { animation-delay: 1.0s; }
+        .module:nth-child(4) { animation-delay: 1.5s; }
+        .module:nth-child(5) { animation-delay: 2.0s; }
+        .module:nth-child(6) { animation-delay: 2.5s; }
+        @keyframes moduleFloat {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-5px); }
+        }
+
+        .module-icon {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 18px;
+          font-weight: 700;
+          color: white;
+          position: relative;
+        }
+        .module-label {
+          font-size: 10px;
+          color: rgba(255, 255, 255, 0.4);
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 1.2px;
+        }
+
+        /* Module colors */
+        .m-estop .module-icon { background: rgba(239, 68, 68, 0.2); border: 2px solid #ef4444; }
+        .m-velocity .module-icon { background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6; }
+        .m-geofence .module-icon { background: rgba(168, 85, 247, 0.2); border: 2px solid #a855f7; }
+        .m-rate .module-icon { background: rgba(234, 179, 8, 0.2); border: 2px solid #eab308; }
+        .m-audit .module-icon { background: rgba(34, 197, 94, 0.2); border: 2px solid #22c55e; }
+        .m-deadman .module-icon { background: rgba(249, 115, 22, 0.2); border: 2px solid #f97316; }
+
+        /* Connection lines between modules */
+        .connector {
+          position: absolute;
+          bottom: 85px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 580px;
+          height: 2px;
+          background: linear-gradient(90deg,
+            transparent,
+            rgba(34, 197, 94, 0.15) 15%,
+            rgba(34, 197, 94, 0.3) 50%,
+            rgba(34, 197, 94, 0.15) 85%,
+            transparent
+          );
+        }
+
+        /* Ambient orbs */
+        .orb {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(80px);
+          opacity: 0.12;
+          animation: drift 12s ease-in-out infinite alternate;
+        }
+        .orb1 { width: 350px; height: 350px; background: #22c55e; top: -120px; left: -80px; }
+        .orb2 { width: 280px; height: 280px; background: #3b82f6; bottom: -100px; right: -60px; animation-delay: 4s; }
+        .orb3 { width: 200px; height: 200px; background: #ef4444; top: 30px; right: 150px; animation-delay: 7s; opacity: 0.08; }
+        @keyframes drift {
+          0% { transform: translate(0, 0); }
+          100% { transform: translate(25px, 15px); }
+        }
+
+        /* Stats row */
+        .stats {
+          display: flex;
+          gap: 32px;
+          justify-content: center;
+          margin-bottom: 24px;
+        }
+        .stat {
+          display: flex;
+          align-items: baseline;
+          gap: 5px;
+        }
+        .stat-num {
+          font-size: 22px;
+          font-weight: 800;
+          color: #22c55e;
+        }
+        .stat-label {
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.35);
+          font-weight: 500;
+        }
+      </style>
+      <div class="scene">
+        <div class="orb orb1"></div>
+        <div class="orb orb2"></div>
+        <div class="orb orb3"></div>
+        <div class="grid"></div>
+        <div class="scan-line"></div>
+        <div class="connector"></div>
+        <div class="content">
+          <div class="logo">
+            <div class="shield">
+              <span class="shield-icon">&#x1f6e1;</span>
+            </div>
+            <span class="title">PhysicalMCP</span>
+          </div>
+          <div class="subtitle">The safety layer between AI agents and real robots</div>
+          <div class="stats">
+            <div class="stat">
+              <span class="stat-num">100</span>
+              <span class="stat-label">MCP Tools</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">25</span>
+              <span class="stat-label">Safety Modules</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">2167</span>
+              <span class="stat-label">Tests</span>
+            </div>
+          </div>
+          <div class="modules">
+            <div class="module m-estop">
+              <div class="module-icon">&#x1f6d1;</div>
+              <span class="module-label">E-Stop</span>
+            </div>
+            <div class="module m-velocity">
+              <div class="module-icon">&#x26a1;</div>
+              <span class="module-label">Velocity</span>
+            </div>
+            <div class="module m-geofence">
+              <div class="module-icon">&#x1f4cd;</div>
+              <span class="module-label">Geofence</span>
+            </div>
+            <div class="module m-rate">
+              <div class="module-icon">&#x23f1;</div>
+              <span class="module-label">Rate Limit</span>
+            </div>
+            <div class="module m-audit">
+              <div class="module-icon">&#x1f4cb;</div>
+              <span class="module-label">Audit</span>
+            </div>
+            <div class="module m-deadman">
+              <div class="module-icon">&#x1f4a1;</div>
+              <span class="module-label">Deadman</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </foreignObject>
+</svg>
