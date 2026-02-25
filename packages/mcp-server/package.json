@@ -38,7 +38,7 @@
     "url": "https://github.com/ricardothe3rd/physical-mcp.git"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.3",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "ws": "^8.16.0",
     "yaml": "^2.3.4",
     "zod": "^3.22.0",
