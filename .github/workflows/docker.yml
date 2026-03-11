@@ -26,7 +26,7 @@ jobs:
 
       - name: Extract metadata for bridge image
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/ricardothe3rd/physical-mcp-bridge
           tags: |
@@ -58,7 +58,7 @@ jobs:
 
       - name: Extract metadata for sim image
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/ricardothe3rd/physical-mcp-sim
           tags: |
